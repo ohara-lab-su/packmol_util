@@ -108,14 +108,15 @@ class PackmolInp:
 
         with open(inp_file, "w", encoding="utf-8") as output_file:
             output_file.write(f"tolerance {self.tolerance:.6f}\n")
+
+            if self.use_pbc:
+                output_file.write(f"pbc {cell_max:.6f} {cell_max:.6f} {cell_max:.6f}\n")
+
             output_file.write(f"filetype {self.filetype}\n")
             output_file.write(f"output {self.output_xyz}\n")
 
             if self.seed is not None:
                 output_file.write(f"seed {self.seed}\n")
-
-            if self.use_pbc:
-                output_file.write(f"pbc {cell_max:.6f} {cell_max:.6f} {cell_max:.6f}\n")
 
             if self.precision is not None:
                 output_file.write(f"precision {self.precision:.6f}\n")
@@ -151,9 +152,13 @@ class PackmolInp:
                         f"{cell_max:.6f} {cell_max:.6f} {cell_max:.6f}\n"
                     )
                 else:
-                    inside_box_values: List[float] = [float(value) for value in inside_box_object]
+                    inside_box_values: List[float] = [
+                        float(value) for value in inside_box_object
+                    ]
+
                     if len(inside_box_values) != 6:
                         raise ValueError("inside_box は 6 成分である必要がある。")
+
                     output_file.write(
                         "  inside box "
                         f"{inside_box_values[0]:.6f} "
@@ -169,6 +174,7 @@ class PackmolInp:
                     output_file.write(f"  radius {radius_value:.6f}\n")
 
                 constraints: List[str] = [str(value) for value in constraints_object]
+
                 for constraint in constraints:
                     output_file.write(f"  {constraint}\n")
 

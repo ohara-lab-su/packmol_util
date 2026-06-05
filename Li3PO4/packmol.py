@@ -1,122 +1,30 @@
 #!/usr/bin/env python3
 """
-K.NAKADA, kengo.nakada@gmail.com
-make_amorphous.py
-
-初期版:
-Fe–Si–B アモルファス初期構造を Packmol により生成するための
-入力ファイル (packmol.inp) を作成するスクリプト。
-
-修正版:
-Li3PO4 の Packmol 初期構造作成に使う補助クラスとして拡張
-
-本スクリプトは、以下の 3 点を外部入力とする：
-
-    1. 化学量論比（整数比）
-    2. 密度 [g/cm^3] または 数密度 [1/Å^3] のいずれか一方
-    3. セル内の総原子数 N_tot
-
-Packmol は密度・化学量論比の概念を持たないため、本スクリプト側で
-原子数とセル一辺長 L を計算し、Packmol 形式の inside box 指定に変換する。
+Li3PO4 の Packmol 初期構造作成に使う補助クラスである。
 """
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union, Tuple, Callable, Sequence
-import subprocess
 
 import math
+import subprocess
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
 
 from packmol_inp import PackmolInp
-from x_logger import XLogger
 
 NA: float = 6.02214076e23
 A3_TO_CM3: float = 1.0e-24
 
-# -------------------------------------------------------------
-# 原子量 (g/mol)
-# -------------------------------------------------------------
 ATOMIC_WEIGHTS: Dict[str, float] = {
-    "H": 1.00794,
-    "He": 4.002602,
     "Li": 6.941,
-    "Be": 9.012182,
     "B": 10.811,
-    "C": 12.0107,
-    "N": 14.0067,
     "O": 15.9994,
-    "F": 18.9984032,
-    "Ne": 20.1797,
-    "Na": 22.98976928,
-    "Mg": 24.3050,
-    "Al": 26.9815386,
     "Si": 28.0855,
     "P": 30.973762,
-    "S": 32.065,
-    "Cl": 35.453,
-    "Ar": 39.948,
-    "K": 39.0983,
-    "Ca": 40.078,
-    "Sc": 44.955912,
-    "Ti": 47.867,
-    "V": 50.9415,
-    "Cr": 51.9961,
-    "Mn": 54.938045,
     "Fe": 55.845,
-    "Co": 58.933195,
-    "Ni": 58.6934,
-    "Cu": 63.546,
-    "Zn": 65.409,
-    "Ga": 69.723,
-    "Ge": 72.64,
-    "As": 74.92160,
-    "Se": 78.96,
-    "Br": 79.904,
-    "Kr": 83.798,
-    "Rb": 85.4678,
-    "Sr": 87.62,
-    "Y": 88.90585,
-    "Zr": 91.224,
-    "Nb": 92.90638,
-    "Mo": 95.96,
-    "Ru": 101.07,
-    "Rh": 102.90550,
-    "Pd": 106.42,
-    "Ag": 107.8682,
-    "Cd": 112.411,
-    "In": 114.818,
-    "Sn": 118.710,
-    "Sb": 121.760,
-    "Te": 127.60,
-    "I": 126.90447,
-    "Xe": 131.293,
-    "Cs": 132.9054519,
-    "Ba": 137.327,
-    "La": 138.90547,
-    "Ce": 140.116,
-    "Pr": 140.90765,
-    "Nd": 144.242,
-    "Sm": 150.36,
-    "Eu": 151.964,
-    "Gd": 157.25,
-    "Tb": 158.92535,
-    "Dy": 162.500,
-    "Ho": 164.93032,
-    "Er": 167.259,
-    "Tm": 168.93421,
-    "Yb": 173.04,
-    "Lu": 174.967,
-    "Hf": 178.49,
-    "Ta": 180.94788,
-    "W": 183.84,
-    "Re": 186.207,
-    "Os": 190.23,
-    "Ir": 192.217,
-    "Pt": 195.084,
-    "Au": 196.966569,
-    "Hg": 200.59,
-    "Tl": 204.3833,
-    "Pb": 207.2,
-    "Bi": 208.98040,
 }
 
 
@@ -127,21 +35,18 @@ class Packmol:
 
     def __init__(
         self,
-        input_file: Optional[str] = None,  # "packmol.inp",
-        output_xyz: Optional[str] = None,  # "amorphous.xyz",
+        input_file: Optional[str] = None,
+        output_xyz: Optional[str] = None,
         output_log: Optional[str] = None,
-        packmol_bin: Optional[str] = None,  # "/Users/nakada/packmol/bin/packmol",
-        logger: Optional[XLogger] = None,
+        packmol_bin: Optional[str] = None,
     ) -> None:
         """
         Args:
             input_file: Packmol 入力ファイル名である。
             output_xyz: Packmol 出力 XYZ ファイル名である。
             output_log: Packmol ログファイル名である。
-            packmol_bin (str): bin と言いながら path 指定
-            logger:
+            packmol_bin: Packmol 実行ファイルである。
         """
-        self._logger: XLogger = logger or XLogger()
         if input_file is None:
             self.input_file = "packmol.inp"
         else:
@@ -162,45 +67,36 @@ class Packmol:
         else:
             self.packmol_bin = packmol_bin
 
-        self._logger.info(f"input_file: {self.input_file}")
-        self._logger.info(f"output_xyz: {self.output_xyz}")
-        self._logger.info(f"output_log: {self.output_log}")
-        self._logger.info(f"packmol_bin: {self.packmol_bin}")
-
     def get_unit_atom_count(
         self,
         ratios: Sequence[int],
     ) -> int:
         """
         化学量論比 1 単位あたりの原子数を返す。
-        例: [80, 9, 11] -> 100
 
         Args:
-            ratios: 化学量論比
+            ratios: 化学量論比である。
 
         Returns:
-            化学量論比 1 単位あたりの原子数
+            化学量論比 1 単位あたりの原子数である。
         """
-        self._logger.info(f"== get_unit_atom_count()")
-
         total: int = 0
         for value in ratios:
             total = total + value
         return total
 
-    @staticmethod
     def get_atomic_weight(
+        self,
         element: str,
     ) -> float:
-        """汎用
-
-        元素記号から原子量を取得する。
+        """
+        元素記号から原子量を返す。
 
         Args:
-            element: 元素記号（例: "Fe", "Si", "B"）
+            element: 元素記号である。
 
         Returns:
-            float: 原子量 [g/mol]
+            原子量である。
         """
         return ATOMIC_WEIGHTS[element]
 
@@ -212,27 +108,19 @@ class Packmol:
         """
         化学量論比から平均原子量を計算する。
 
-        たとえば Fe80Si9B11 の場合は::
-
-            symbols = ["Fe", "Si", "B"]
-            ratios  = [80, 9, 11]
-
         Args:
-            symbols (Sequence[str]): 元素記号の並び。
-            ratios (Sequence[int]): 各元素の化学量論比に対応する整数比。
+            symbols: 元素記号の列である。
+            ratios: 元素記号に対応する化学量論比である。
 
         Returns:
-            float: 平均原子量 [g/mol]。
+            平均原子量である。
         """
-        self._logger.info("== average_atomic_weight()")
-
         if len(symbols) != len(ratios):
             raise ValueError("symbols と ratios の長さが一致していない。")
 
-        # total_atoms: int = 0
-        # for ratio in ratios:
-        #     total_atoms = total_atoms + ratio
-        total_atoms: int = sum(ratios)
+        total_atoms: int = 0
+        for ratio in ratios:
+            total_atoms = total_atoms + ratio
 
         if total_atoms <= 0:
             raise ValueError("ratios の合計は正である必要がある。")
@@ -520,8 +408,16 @@ class Packmol:
                 )
 
         if result.returncode != 0:
+            with open(actual_output_log, "r", encoding="utf-8") as log_handle:
+                log_lines: List[str] = log_handle.readlines()
+
+            log_tail: str = "".join(log_lines[-120:])
+
             raise RuntimeError(
-                f"Packmol の終了ステータスが 0 ではない。log={actual_output_log}"
+                "Packmol の終了ステータスが 0 ではない。\n"
+                f"log = {actual_output_log}\n"
+                "Packmol log tail:\n"
+                f"{log_tail}"
             )
 
     def _read_xyz_atoms(
@@ -611,7 +507,7 @@ class Packmol:
                     )
 
 
-def main() -> None:
+def main0() -> None:
     """
     Li3PO4 の Packmol 入力を作成する実行例である。
     """
@@ -640,6 +536,54 @@ def main() -> None:
     print(
         "packmol.xyz_to_poscar('li3po4_packmol.xyz', 'POSCAR', cell_length, ['Li', 'P', 'O'])"
     )
+
+
+def main() -> None:
+    """
+    Li3PO4 の Packmol 入力作成、Packmol 実行、POSCAR 作成を行う。
+    """
+    packmol = Packmol(
+        input_file="packmol.inp",
+        output_xyz="li3po4_packmol.xyz",
+        output_log="packmol.log",
+        packmol_bin="packmol",
+    )
+
+    cell_length: float = packmol.write_li3po4_packmol_input(
+        formula_unit_count=64,
+        mass_density_g_cm3=2.46,
+        inp_file="packmol.inp",
+        output_xyz="li3po4_packmol.xyz",
+        li_xyz="Li.xyz",
+        po4_xyz="PO4.xyz",
+        tolerance=1.8,
+        seed=191917,
+        p_o_distance=1.54,
+        use_pbc=True,
+        precision=0.01,
+    )
+
+    packmol.run_packmol(
+        input_file="packmol.inp",
+        output_log="packmol.log",
+        packmol_bin="packmol",
+    )
+
+    packmol.xyz_to_poscar(
+        xyz_file="li3po4_packmol.xyz",
+        poscar_file="POSCAR",
+        cell_length=cell_length,
+        elements=["Li", "P", "O"],
+        comment="Li3PO4 amorphous initial model generated by Packmol",
+    )
+
+    print(f"cell_length = {cell_length:.10f} Angstrom")
+    print("created: Li.xyz")
+    print("created: PO4.xyz")
+    print("created: packmol.inp")
+    print("created: li3po4_packmol.xyz")
+    print("created: packmol.log")
+    print("created: POSCAR")
 
 
 if __name__ == "__main__":

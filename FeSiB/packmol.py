@@ -15,109 +15,106 @@ Fe–Si–B アモルファス初期構造を Packmol により生成するた�
 Packmol は密度・化学量論比の概念を持たないため、本スクリプト側で
 原子数とセル一辺長 L を計算し、Packmol 形式の inside box 指定に変換する。
 """
-
 from typing import Any, Dict, List, Optional, Union, Tuple, Callable, Sequence
 import subprocess
 
-import math
-
-from packmol_inp import PackmolInp
 from x_logger import XLogger
 
 NA: float = 6.02214076e23  # アボガドロ数 [1/mol]
 A3_TO_CM3: float = 1e-24  # 1 Å³ = 1e-24 cm³
 
+
 # -------------------------------------------------------------
 # 原子量 (g/mol)
 # -------------------------------------------------------------
 ATOMIC_WEIGHTS: Dict[str, float] = {
-    "H": 1.00794,
-    "He": 4.002602,
-    "Li": 6.941,
-    "Be": 9.012182,
+    #   "H": 1.00794,
+    #   "He": 4.002602,
+    #   "Li": 6.941,
+    #   "Be": 9.012182,
     "B": 10.811,
-    "C": 12.0107,
-    "N": 14.0067,
-    "O": 15.9994,
-    "F": 18.9984032,
-    "Ne": 20.1797,
-    "Na": 22.98976928,
-    "Mg": 24.3050,
-    "Al": 26.9815386,
+    #   "C": 12.0107,
+    #   "N": 14.0067,
+    #   "O": 15.9994,
+    #   "F": 18.9984032,
+    #   "Ne": 20.1797,
+    #   "Na": 22.98976928,
+    #   "Mg": 24.3050,
+    #   "Al": 26.9815386,
     "Si": 28.0855,
-    "P": 30.973762,
-    "S": 32.065,
-    "Cl": 35.453,
-    "Ar": 39.948,
-    "K": 39.0983,
-    "Ca": 40.078,
-    "Sc": 44.955912,
-    "Ti": 47.867,
-    "V": 50.9415,
-    "Cr": 51.9961,
-    "Mn": 54.938045,
+    #   "P": 30.973762,
+    #   "S": 32.065,
+    #   "Cl": 35.453,
+    #   "Ar": 39.948,
+    #   "K": 39.0983,
+    #   "Ca": 40.078,
+    #   "Sc": 44.955912,
+    #   "Ti": 47.867,
+    #   "V": 50.9415,
+    #   "Cr": 51.9961,
+    #   "Mn": 54.938045,
     "Fe": 55.845,
-    "Co": 58.933195,
-    "Ni": 58.6934,
-    "Cu": 63.546,
-    "Zn": 65.409,
-    "Ga": 69.723,
-    "Ge": 72.64,
-    "As": 74.92160,
-    "Se": 78.96,
-    "Br": 79.904,
-    "Kr": 83.798,
-    "Rb": 85.4678,
-    "Sr": 87.62,
-    "Y": 88.90585,
-    "Zr": 91.224,
-    "Nb": 92.90638,
-    "Mo": 95.96,
-    "Ru": 101.07,
-    "Rh": 102.90550,
-    "Pd": 106.42,
-    "Ag": 107.8682,
-    "Cd": 112.411,
-    "In": 114.818,
-    "Sn": 118.710,
-    "Sb": 121.760,
-    "Te": 127.60,
-    "I": 126.90447,
-    "Xe": 131.293,
-    "Cs": 132.9054519,
-    "Ba": 137.327,
-    "La": 138.90547,
-    "Ce": 140.116,
-    "Pr": 140.90765,
-    "Nd": 144.242,
-    "Sm": 150.36,
-    "Eu": 151.964,
-    "Gd": 157.25,
-    "Tb": 158.92535,
-    "Dy": 162.500,
-    "Ho": 164.93032,
-    "Er": 167.259,
-    "Tm": 168.93421,
-    "Yb": 173.04,
-    "Lu": 174.967,
-    "Hf": 178.49,
-    "Ta": 180.94788,
-    "W": 183.84,
-    "Re": 186.207,
-    "Os": 190.23,
-    "Ir": 192.217,
-    "Pt": 195.084,
-    "Au": 196.966569,
-    "Hg": 200.59,
-    "Tl": 204.3833,
-    "Pb": 207.2,
-    "Bi": 208.98040,
+    #   "Co": 58.933195,
+    #   "Ni": 58.6934,
+    #   "Cu": 63.546,
+    #   "Zn": 65.409,
+    #   "Ga": 69.723,
+    #   "Ge": 72.64,
+    #   "As": 74.92160,
+    #   "Se": 78.96,
+    #   "Br": 79.904,
+    #   "Kr": 83.798,
+    #   "Rb": 85.4678,
+    #   "Sr": 87.62,
+    #   "Y": 88.90585,
+    #   "Zr": 91.224,
+    #   "Nb": 92.90638,
+    #   "Mo": 95.96,
+    #   "Ru": 101.07,
+    #   "Rh": 102.90550,
+    #   "Pd": 106.42,
+    #   "Ag": 107.8682,
+    #   "Cd": 112.411,
+    #   "In": 114.818,
+    #   "Sn": 118.710,
+    #   "Sb": 121.760,
+    #   "Te": 127.60,
+    #   "I": 126.90447,
+    #   "Xe": 131.293,
+    #   "Cs": 132.9054519,
+    #   "Ba": 137.327,
+    #   "La": 138.90547,
+    #   "Ce": 140.116,
+    #   "Pr": 140.90765,
+    #   "Nd": 144.242,
+    #   "Sm": 150.36,
+    #   "Eu": 151.964,
+    #   "Gd": 157.25,
+    #   "Tb": 158.92535,
+    #   "Dy": 162.500,
+    #   "Ho": 164.93032,
+    #   "Er": 167.259,
+    #   "Tm": 168.93421,
+    #   "Yb": 173.04,
+    #   "Lu": 174.967,
+    #   "Hf": 178.49,
+    #   "Ta": 180.94788,
+    #   "W": 183.84,
+    #   "Re": 186.207,
+    #   "Os": 190.23,
+    #   "Ir": 192.217,
+    #   "Pt": 195.084,
+    #   "Au": 196.966569,
+    #   "Hg": 200.59,
+    #   "Tl": 204.3833,
+    #   "Pb": 207.2,
+    #   "Bi": 208.98040,
 }
 
 
 class Packmol:
     """
-    Packmol による非晶質初期構造作成を補助するクラスである。
+    amorphous構造を作成するのに助けになるメソッドなど
     """
 
     def __init__(
@@ -131,33 +128,17 @@ class Packmol:
         """
 
         Args:
-            input_file: Packmol 入力ファイル名である。
-            output_xyz: Packmol 出力 XYZ ファイル名である。
-            output_log: Packmol ログファイル名である。
+            input_file:
+            output_xyz:
+            output_log:
             packmol_bin (str): bin と言いながら path 指定
             logger:
         """
         self._logger: XLogger = logger or XLogger()
-        if input_file is None:
-            self.input_file = "packmol.inp"
-        else:
-            self.input_file = input_file
-
-        if output_xyz is None:
-            self.output_xyz = "amorphous.xyz"
-        else:
-            self.output_xyz = output_xyz
-
-        if output_log is None:
-            self.output_log = "packmol.log"
-        else:
-            self.output_log = output_log
-
-        if packmol_bin is None:
-            self.packmol_bin = "/Users/nakada/packmol/bin/packmol"
-            # self.packmol_bin = "packmol"
-        else:
-            self.packmol_bin = packmol_bin
+        self.input_file: str = input_file or "packmol.inp"
+        self.output_xyz: str = output_xyz or "amorphous.xyz"
+        self.output_log: str = output_log or "packmol.log"
+        self.packmol_bin = packmol_bin or "/Users/nakada/packmol/bin/packmol"
 
         self._logger.info(f"input_file: {self.input_file}")
         self._logger.info(f"output_xyz: {self.output_xyz}")
@@ -169,18 +150,16 @@ class Packmol:
         ratios: Sequence[int],
     ) -> int:
         """
-        化学量論比 1 単位あたりの原子数を返す。
+        化学量論比1ユニットあたりの原子数を返す。
         例: [80, 9, 11] -> 100
 
         Args:
-            ratios: 化学量論比
+            ratios:
 
         Returns:
-            化学量論比 1 単位あたりの原子数
 
         """
         self._logger.info(f"== get_unit_atom_count()")
-
         total = 0
         for value in ratios:
             total = total + value
@@ -195,10 +174,16 @@ class Packmol:
         元素記号から原子量を取得する。
 
         Args:
-            element (str): 元素記号（例: "Fe", "Si", "B"）
+            element (str):
+                元素記号（例: "Fe", "Si", "B"）。
 
         Returns:
-            float: 原子量 [g/mol]
+            float:
+                原子量 [g/mol]。
+
+        Raises:
+            KeyError:
+                対応する元素記号がテーブルに存在しない場合。
         """
         return ATOMIC_WEIGHTS[element]
 
@@ -216,38 +201,28 @@ class Packmol:
             symbols = ["Fe", "Si", "B"]
             ratios  = [80, 9, 11]
 
+        のように与える。
+
         Args:
             symbols (Sequence[str]): 元素記号の並び。
             ratios (Sequence[int]): 各元素の化学量論比に対応する整数比。
 
         Returns:
-            float: 平均原子量 [g/mol]。
+            float:
+                平均原子量 [g/mol]。
         """
         self._logger.info("== average_atomic_weight()")
-
         if len(symbols) != len(ratios):
             raise ValueError("symbols と ratios の長さが一致していません。")
 
-        # total_atoms: int = 0
-        # for ratio in ratios:
-        #     total_atoms = total_atoms + ratio
         total_atoms: int = sum(ratios)
-
         if total_atoms <= 0:
             raise ValueError("ratios の合計が 0 以下です。")
 
         total_mass: float = 0.0
-
-        index: int = 0
-        for symbol in symbols:
-            ratio_value: int = ratios[index]
+        for symbol, ratio in zip(symbols, ratios):
             atomic_weight: float = self.get_atomic_weight(symbol)
-            total_mass = total_mass + atomic_weight * float(ratio_value)
-            index = index + 1
-
-        # for symbol, ratio in zip(symbols, ratios):
-        #     atomic_weight: float = self.get_atomic_weight(symbol)
-        #     total_mass += atomic_weight * float(ratio)
+            total_mass += atomic_weight * float(ratio)
 
         return total_mass / float(total_atoms)
 
