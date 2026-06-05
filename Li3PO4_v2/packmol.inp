@@ -1,17 +1,14 @@
-tolerance 1.800000
-pbc 17.102534 17.102534 17.102534
+tolerance 1.8
 filetype xyz
 output li3po4_packmol.xyz
-seed 191917
-precision 0.010000
 
 structure Li.xyz
   number 192
-  inside box 0.000000 0.000000 0.000000 17.102534 17.102534 17.102534
+  inside box 0.0 0.0 0.0  17.102534 17.102534 17.102534
 end structure
 
 structure PO4.xyz
   number 64
-  inside box 0.000000 0.000000 0.000000 17.102534 17.102534 17.102534
+  inside box 0.0 0.0 0.0  17.102534 17.102534 17.102534
 end structure
 

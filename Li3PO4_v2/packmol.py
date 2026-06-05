@@ -16,16 +16,11 @@ Packmol は密度・化学量論比の概念を持たないため、本スクリ
 原子数とセル一辺長 L を計算し、Packmol 形式の inside box 指定に変換する。
 """
 
-import math
-import subprocess
 from typing import Dict, List, Optional, Sequence, Tuple
+import subprocess
 
-from param import *
-from packmol_inp import PackmolInp
+from param import ATOMIC_WEIGHTS, NA, A3_TO_CM3
 from x_logger import XLogger
-
-NA: float = 6.02214076e23
-A3_TO_CM3: float = 1e-24
 
 
 class Packmol:
@@ -45,7 +40,7 @@ class Packmol:
         self.input_file: str = input_file or "packmol.inp"
         self.output_xyz: str = output_xyz or "amorphous.xyz"
         self.output_log: str = output_log or "packmol.log"
-        self.packmol_bin = packmol_bin or "packmol"
+        self.packmol_bin: str = packmol_bin or "packmol"
 
         self._logger.info(f"input_file: {self.input_file}")
         self._logger.info(f"output_xyz: {self.output_xyz}")
@@ -70,7 +65,10 @@ class Packmol:
     def get_atomic_weight(
         element: str,
     ) -> float:
-        """汎用"""
+        """汎用
+
+        元素記号から原子量を取得する。
+        """
         return ATOMIC_WEIGHTS[element]
 
     def average_atomic_weight(
@@ -78,7 +76,10 @@ class Packmol:
         symbols: Sequence[str],
         ratios: Sequence[int],
     ) -> float:
-        """汎用"""
+        """汎用
+
+        化学量論比から平均原子量を計算する。
+        """
         self._logger.info("== average_atomic_weight()")
         if len(symbols) != len(ratios):
             raise ValueError("symbols と ratios の長さが一致していません。")
@@ -100,7 +101,10 @@ class Packmol:
         ratios: Sequence[int],
         mass_density_g_cm3: float,
     ) -> float:
-        """汎用"""
+        """汎用
+
+        質量密度から数密度 n [1/Å^3] を計算する。
+        """
         self._logger.info("== number_density_from_mass_density()")
         M_avg: float = self.average_atomic_weight(symbols, ratios)
         return mass_density_g_cm3 * NA * A3_TO_CM3 / M_avg
@@ -111,7 +115,10 @@ class Packmol:
         ratios: Sequence[int],
         number_density_A3: float,
     ) -> float:
-        """汎用"""
+        """汎用
+
+        数密度 n [1/Å^3] から質量密度 ρ [g/cm^3] を計算する。
+        """
         self._logger.info("== mass_density_from_number_density()")
         M_avg: float = self.average_atomic_weight(symbols, ratios)
         return number_density_A3 * M_avg / (NA * A3_TO_CM3)
@@ -121,7 +128,10 @@ class Packmol:
         N_tot: int,
         number_density_A3: float,
     ) -> float:
-        """汎用"""
+        """汎用
+
+        総原子数と数密度から立方体セル長 L [Å] を計算する。
+        """
         self._logger.info("== cell_length_from_number_density()")
         if N_tot <= 0:
             raise ValueError("N_tot は正の整数である必要があります。")
@@ -138,7 +148,10 @@ class Packmol:
         ratios: Sequence[int],
         N_tot: int,
     ) -> Dict[str, int]:
-        """汎用"""
+        """汎用
+
+        化学量論比と N_tot から各元素の原子数を決める。
+        """
         self._logger.info("== compute_element_counts()")
         if len(symbols) != len(ratios):
             raise ValueError(
@@ -184,7 +197,10 @@ class Packmol:
         ratios: Sequence[int],
         max_atom_count: int,
     ) -> List[int]:
-        """汎用"""
+        """汎用
+
+        化学量論比を厳密に保つセル原子数を列挙する。
+        """
         self._logger.info("== generate_cell_sizes()")
         unit_atom_count = self.get_unit_atom_count(ratios)
         cell_sizes: List[int] = []
@@ -253,6 +269,9 @@ class Packmol:
     ) -> None:
         """Packmol が出力した XYZ を VASP POSCAR へ変換する。"""
         self._logger.info("== xyz_to_poscar()")
+        if elements is None:
+            raise ValueError("elements は指定してください。")
+
         with open(xyz_file, "r") as f:
             lines = f.readlines()
 
@@ -294,10 +313,7 @@ class Packmol:
             f.write(f"{L:.10f} 0.0 0.0\n")
             f.write(f"0.0 {L:.10f} 0.0\n")
             f.write(f"0.0 0.0 {L:.10f}\n")
-
-            if elements is not None:
-                f.write(" ".join(elements) + "\n")
-
+            f.write(" ".join(elements) + "\n")
             f.write(" ".join(str(species_counts[s]) for s in elements) + "\n")
             f.write("Direct\n")
 

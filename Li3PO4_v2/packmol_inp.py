@@ -55,12 +55,10 @@ class PackmolInp:
         L = self.box_length
 
         with open(inp_file, "w") as f:
-            # ヘッダ
             f.write(f"tolerance {self.tolerance}\n")
             f.write("filetype xyz\n")
             f.write(f"output {self.output_xyz}\n\n")
 
-            # 各 structure ブロック
             for blk in self.structure_blocks:
                 xyz = blk["xyz"]
                 num = blk["number"]

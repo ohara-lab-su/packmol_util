@@ -14,11 +14,7 @@
 
   Reading input file... (Control-C aborts)
   Types of coordinate files specified: xyz
-  Periodic boundary condition activated: 
-    Minimum coordinates:     0.00    0.00    0.00
-    Maximum coordinates:    17.10   17.10   17.10
-  Optional precision set:    1.0000000000000000E-002
-  Seed for random number generator:       191917
+  Seed for random number generator:      1234567
   Output file: li3po4_packmol.xyz
   Reading coordinate file: Li.xyz
   Reading coordinate file: PO4.xyz
@@ -37,9 +33,6 @@
   Number of free molecules:          256
   Number of variables:         1536
   Total number of fixed atoms:            0
-  PBC on: Constraint automatically added to non-fixed atoms:
-  -> inside box     0.00    0.00    0.00   17.10   17.10   17.10
-  Updated total number of restrictions:            3
   Maximum internal distance of type            1 :    0.0000000000000000     
   Maximum internal distance of type            2 :    2.5148094693930938     
   All atoms must be within these coordinates: 
@@ -65,8 +58,8 @@
   Packing:|0                                                        100%|
           |***
 
-  Restraint-only function value:    3.1790949886345513E-011
-  Maximum violation of the restraints:    1.2286734794809210E-012
+  Restraint-only function value:    1.5420390167065648E-011
+  Maximum violation of the restraints:    4.1836314805222442E-013
 
 --------------------------------------------------------------------------------
 
@@ -75,22 +68,22 @@
   Packing:|0                                                        100%|
           |*********************
 
-  Restraint-only function value:    1.6825797200050278E-003
-  Maximum violation of the restraints:    1.3025819337692142E-003
+  Restraint-only function value:    5.8177717457933075E-003
+  Maximum violation of the restraints:    4.5086999865350860E-003
 
 --------------------------------------------------------------------------------
 
   Rescaling maximum and minimum coordinates... 
   Mininum and maximum coordinates after constraint fitting: 
-   x: [   -2.5520402953021864E-002 ,    17.102534564128632       ] 
-   y: [   -1.3783994633346605E-002 ,    17.102534532505388       ] 
-   z: [   -5.3191490678727860E-007 ,    17.102534551579083       ] 
+   x: [   -6.7146853884117952E-002 ,    17.102534549824213       ] 
+   y: [   -5.4678707783750724E-007 ,    17.127786988597176       ] 
+   z: [   -4.7470268782490166E-007 ,    17.128164138448394       ] 
   Computing size of patches... 
   Number of cells in each direction and cell sides: 
-   x:            8  cells of size    2.1378167499999998     
-   y:            8  cells of size    2.1378167499999998     
-   z:            8  cells of size    2.1378167499999998     
-  Cell-system length:   17.10253  17.10253  17.10253
+   x:           10  cells of size    2.1129681403708331     
+   y:           10  cells of size    2.1087787535384255     
+   z:           10  cells of size    2.1088164613151084     
+  Cell-system length:   21.12968  21.08779  21.08816
   Reseting center of mass... 
 
 --------------------------------------------------------------------------------
@@ -112,12 +105,12 @@
   Adjusting random positions to fit the constraints. 
   Packing:|0                                                        100%|
           |***
-  Restraint-only function value:    0.0000000000000000     
-  Maximum violation of the restraints:    0.0000000000000000     
+  Restraint-only function value:    1.3354928582143182E-004
+  Maximum violation of the restraints:    1.3354928582143182E-004
 
 ################################################################################
 
-  Objective function at initial point:    1585.8465543629206     
+  Objective function at initial point:    1400.9835092435635     
 
 ################################################################################
 
@@ -132,20 +125,20 @@
   Scaling radii by:    1.1000000000000001     
 
   Packing:|0                                                        100%|
-          |*********************************
+          |************************
 
-  Function value from last GENCAN loop: f = .00000E+00
-  Best function value before: f = .20857E+03
+  Function value from last GENCAN loop: f = .87414E-04
+  Best function value before: f = .17277E+03
   Improvement from best function value:    99.99 %
   Improvement from last loop:    99.99 %
   Maximum violation of target distance:     0.000000
-  Maximum violation of the constraints: .00000E+00
+  Maximum violation of the constraints: .73450E-04
   Current structure written to file: li3po4_packmol.xyz
 --------------------------------------------------------------------------------
   Packing solved for molecules of type           1
-  Objective function value:    0.0000000000000000     
+  Objective function value:    8.7414393255571377E-005
   Maximum violation of target distance:    0.0000000000000000     
-  Max. constraint violation:    0.0000000000000000     
+  Max. constraint violation:    7.3450457529298149E-005
 --------------------------------------------------------------------------------
 
 ################################################################################
@@ -161,20 +154,20 @@
   Scaling radii by:    1.1000000000000001     
 
   Packing:|0                                                        100%|
-          |*********************************
+          |*********************************************
 
-  Function value from last GENCAN loop: f = .10797E-02
-  Best function value before: f = .64877E+03
+  Function value from last GENCAN loop: f = .19484E-01
+  Best function value before: f = .62494E+03
   Improvement from best function value:    99.99 %
   Improvement from last loop:    99.99 %
   Maximum violation of target distance:     0.000000
-  Maximum violation of the constraints: .10554E-02
+  Maximum violation of the constraints: .58736E-02
   Current structure written to file: li3po4_packmol.xyz
 --------------------------------------------------------------------------------
   Packing solved for molecules of type           2
-  Objective function value:    1.0796613901632834E-003
+  Objective function value:    1.9483763942999121E-002
   Maximum violation of target distance:    0.0000000000000000     
-  Max. constraint violation:    1.0554149211325966E-003
+  Max. constraint violation:    5.8736121766778454E-003
 --------------------------------------------------------------------------------
 
 ################################################################################
@@ -192,20 +185,37 @@
   Packing:|0                                                        100%|
           |*************************************************************|
 
-
-  Function value from last GENCAN loop: f = .15680E-01
-  Best function value before: f = .69248E+03
-  Improvement from best function value:    99.99 %
-  Improvement from last loop:    99.99 %
+  Function value from last GENCAN loop: f = .46296E+00
+  Best function value before: f = .58585E+03
+  Improvement from best function value:    99.92 %
+  Improvement from last loop:    99.92 %
   Maximum violation of target distance:     0.000000
-  Maximum violation of the constraints: .95347E-02
+  Maximum violation of the constraints: .11789E+00
+
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+
+  Starting GENCAN loop:            1
+  Scaling radii by:    1.1000000000000001     
+
+  Packing:|0                                                        100%|
+          |************************
+
+  Function value from last GENCAN loop: f = .18112E-01
+  Best function value before: f = .46296E+00
+  Improvement from best function value:    96.09 %
+  Improvement from last loop:    96.09 %
+  Maximum violation of target distance:     0.000000
+  Maximum violation of the constraints: .94691E-02
 
 ################################################################################
 
                                  Success! 
-              Final objective function value: .15680E-01
+              Final objective function value: .18112E-01
               Maximum violation of target distance:   0.000000
-              Maximum violation of the constraints: .95347E-02
+              Maximum violation of the constraints: .94691E-02
 
 --------------------------------------------------------------------------------
 
@@ -223,7 +233,7 @@
 
 --------------------------------------------------------------------------------
 
-   Running time:    5.52130006E-02  seconds. 
+   Running time:    6.18870035E-02  seconds. 
 
 --------------------------------------------------------------------------------
 

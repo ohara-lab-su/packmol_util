@@ -1,5 +1,12 @@
-#!/usr/bin/env python
-from typing import Dict, List, Optional, Sequence, Tuple
+#!/usr/bin/env python3
+"""
+定数定義。
+"""
+
+from typing import Dict
+
+NA: float = 6.02214076e23
+A3_TO_CM3: float = 1e-24
 
 # -------------------------------------------------------------
 # 原子量 (g/mol)
