@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+FeSiB の Packmol 初期構造を作るサンプルである。
+
+このスクリプトは、分子ユニットを使わない単原子混合系の例である。
+Fe.xyz、Si.xyz、B.xyz という 1 原子テンプレートを作り、それぞれを指定個数だけ
+Packmol に配置させる。
+"""
 
 from model import make_atomic_mixture_recipe
 from packmol import Packmol
@@ -7,9 +14,13 @@ from packmol_inp import PackmolInp
 
 def main() -> None:
     """
-    FeSiB の使用例。
-    物質固有パラメーターはこのスクリプト内で与える。
+    Fe80Si9B11 の単原子混合初期構造を Packmol で作る。
     """
+    # ------------------------------------------------------------
+    # FeSiB の物質固有条件を指定する。
+    # total_atom_count はセル内に入れる総原子数である。
+    # ratios=[80, 9, 11] により、Fe 80 個、Si 9 個、B 11 個を配置する。
+    # ------------------------------------------------------------
     total_atom_count: int = 100
     mass_density_g_cm3: float = 7.0
 
@@ -17,6 +28,15 @@ def main() -> None:
     ratios = [80, 9, 11]
     xyz_files = ["Fe.xyz", "Si.xyz", "B.xyz"]
 
+    # ------------------------------------------------------------
+    # Packmol が単原子テンプレート同士を配置するときの全体的な近接回避距離である。
+    # FeSiB では分子ユニットを作らないため、PO4 のような分子内距離指定は存在しない。
+    # ------------------------------------------------------------
+    minimum_separation_distance: float = 2.3
+
+    # ------------------------------------------------------------
+    # 入出力ファイル名と Packmol 実行コマンドを指定する。
+    # ------------------------------------------------------------
     input_file: str = "packmol.inp"
     output_xyz: str = "fesib_packmol.xyz"
     output_log: str = "packmol.log"
@@ -30,6 +50,11 @@ def main() -> None:
         packmol_bin=packmol_bin,
     )
 
+    # ------------------------------------------------------------
+    # Fe.xyz、Si.xyz、B.xyz を作り、Packmol 用 recipe を作る。
+    # make_atomic_mixture_recipe() は、各元素の単原子テンプレートを作成し、
+    # ratios と total_atom_count から各元素を何個配置するかを決める。
+    # ------------------------------------------------------------
     recipe = make_atomic_mixture_recipe(
         symbols=symbols,
         ratios=ratios,
@@ -37,29 +62,39 @@ def main() -> None:
         xyz_files=xyz_files,
     )
 
+    # ------------------------------------------------------------
+    # 質量密度から数密度を計算し、総原子数と数密度から立方体セル長を決める。
+    # ------------------------------------------------------------
     number_density_A3: float = packmol.number_density_from_mass_density(
         symbols=recipe.symbols,
         ratios=recipe.ratios,
         mass_density_g_cm3=mass_density_g_cm3,
     )
-    L: float = packmol.cell_length_from_number_density(
+    box_length: float = packmol.cell_length_from_number_density(
         total_atom_count=recipe.total_atom_count,
         number_density_A3=number_density_A3,
     )
 
+    # ------------------------------------------------------------
+    # Packmol 入力ファイルを構築する。
+    # FeSiB では各 structure は単原子テンプレートであり、個別の packing 半径は指定しない。
+    # ------------------------------------------------------------
     builder = PackmolInp(
-        minimum_separation_distance=2.3,
+        minimum_separation_distance=minimum_separation_distance,
         output_xyz=output_xyz,
-        box_length=L,
+        box_length=box_length,
     )
     for structure in recipe.structures:
         builder.add_structure(
             xyz_file=structure.xyz_file,
             number=structure.number,
-            packing_radii_by_atom_index=structure.packing_radii_by_atom_index,
+            packing_radii_by_atom_symbol=structure.packing_radii_by_atom_symbol,
         )
     builder.write(input_file)
 
+    # ------------------------------------------------------------
+    # Packmol を実行し、生成された XYZ を POSCAR に変換する。
+    # ------------------------------------------------------------
     packmol.run_packmol(
         input_file=input_file,
         output_log=output_log,

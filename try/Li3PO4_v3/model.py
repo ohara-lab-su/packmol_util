@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
-材料非依存のテンプレート構造を準備する補助関数である。
-Packmol クラス本体へ材料専用処理を入れないために分離する。
+材料非依存の構造テンプレートと Packmol 用レシピを準備する共通モジュールである。
+
+このファイルには、Li3PO4 や FeSiB のような物質固有の数値を置かない。
+物質固有の原子数、密度、分子内距離、packing 半径は make_*.py 側で与える。
+
+ここで行うことは、次の二つである。
+
+1. Packmol に渡す単原子テンプレートまたは分子ユニットテンプレートの XYZ を作る。
+2. make_*.py 側で決めたテンプレートと個数を、Packmol 入力用のレシピにまとめる。
 """
 
 import math
@@ -12,7 +19,23 @@ from typing import Dict, List, Optional, Sequence, Tuple
 @dataclass(frozen=True)
 class StructureSpec:
     """
-    Packmol に渡す 1 つの structure 情報である。
+    Packmol の 1 つの structure ブロックに対応する情報である。
+
+    xyz_file は、Packmol に渡す 1 個の単原子テンプレートまたは 1 個の分子ユニット
+    テンプレートの座標ファイル名である。
+
+    number は、そのテンプレートを Packmol がセル内に何個配置するかを表す。
+    例えば Li.xyz の number が 192 なら、Li 単原子テンプレートを 192 個配置する。
+    PO4.xyz の number が 64 なら、PO4 ユニットを 64 個配置する。
+
+    packing_radii_by_atom_symbol は、Packmol の atoms ... radius ... end atoms 指定へ
+    変換するための情報である。キーは元素記号であり、Packmol の atom index ではない。
+    Packmol 入力ファイルに書くときに、packmol_inp.py が XYZ 内の原子順を読んで、
+    元素記号から atom index へ変換する。
+
+    この packing 半径は分子ユニット内部の結合距離ではない。
+    分子ユニット内部の距離は、write_tetrahedral_unit_xyz() などのテンプレート生成関数で
+    決める。
     """
 
     xyz_file: str
@@ -23,7 +46,14 @@ class StructureSpec:
 @dataclass(frozen=True)
 class MaterialRecipe:
     """
-    Packmol 入力準備情報である。
+    make_*.py 側で定義した構造作成条件を Packmol 入力生成へ渡すためのレシピである。
+
+    total_atom_count は、セル内に最終的に入る総原子数である。
+    Li3PO4 で Li 原子 192 個と PO4 ユニット 64 個を置く場合、総原子数は
+    192 + 64 * 5 = 512 である。
+
+    symbols と ratios は、最終的な POSCAR 変換や密度計算で使う元素順序と組成比である。
+    structures は、Packmol に渡す structure ブロックの列である。
     """
 
     total_atom_count: int
@@ -39,6 +69,9 @@ def write_xyz_template(
 ) -> None:
     """
     任意のテンプレート構造を XYZ として書き出す。
+
+    atoms には、1 個の単原子テンプレートまたは 1 個の分子ユニットテンプレートの
+    原子座標を渡す。ここで書かれた原子順が、Packmol の atom index の順番になる。
     """
     with open(filename, "w") as f:
         f.write(f"{len(atoms)}\n")
@@ -52,7 +85,10 @@ def write_single_atom_xyz(
     element: str,
 ) -> None:
     """
-    単一原子テンプレートを書き出す。
+    Packmol に単原子を配置させるための 1 原子 XYZ テンプレートを書き出す。
+
+    これは FeSiB の Fe、Si、B のように、分子ユニットを作らず、元素ごとの単原子を
+    ランダム配置したい場合に使う。
     """
     write_xyz_template(
         filename=filename,
@@ -68,6 +104,10 @@ def _validate_regular_tetrahedron_distances(
 ) -> None:
     """
     正四面体ユニットの中心-頂点距離と頂点-頂点距離の整合性を確認する。
+
+    正四面体では、中心原子から各頂点原子までの距離を指定すると、頂点原子同士の
+    距離は幾何学的に決まる。したがって、P-O と O-O を同時に入力として受ける場合、
+    両者が正四面体として矛盾していないか確認する必要がある。
     """
     if center_vertex_distance <= 0.0:
         raise ValueError("center_vertex_distance は正の値で指定する。")
@@ -105,9 +145,17 @@ def write_tetrahedral_unit_xyz(
     """
     中心原子 1 個と頂点原子 4 個からなる正四面体ユニットを書き出す。
 
-    center_vertex_distance は中心原子と頂点原子の距離である。
-    vertex_vertex_distance は頂点原子同士の距離である。
-    正四面体では両者は独立ではないため、指定値の整合性を確認する。
+    PO4 の場合、center_element は P、vertex_element は O である。
+    center_vertex_distance は P-O 距離である。
+    vertex_vertex_distance は O-O 距離である。
+
+    この関数で作る XYZ が、Packmol に渡す「1 個の PO4 ユニット」の形になる。
+    Packmol はこの XYZ を読み、PO4 ユニットの内部形状を保ったまま、指定個数を
+    セル内に配置する。
+
+    packing 半径や最小分離距離はここでは扱わない。それらは、すでに作った
+    ユニット同士、またはユニットと単原子が配置時に近づきすぎないようにするための
+    Packmol 入力側の条件である。
     """
     _validate_regular_tetrahedron_distances(
         center_vertex_distance=center_vertex_distance,
@@ -136,7 +184,14 @@ def make_material_recipe(
     structures: Sequence[StructureSpec],
 ) -> MaterialRecipe:
     """
-    元素、組成比、Packmol structure 情報からレシピを作る。
+    make_*.py 側で作った structure 指定を Packmol 用レシピにまとめる。
+
+    この関数は分子構造を作らない。Packmol 入力ファイルも書かない。
+    すでに作られた XYZ テンプレートと、それぞれを何個配置するかという情報を、
+    MaterialRecipe として一つにまとめる。
+
+    Li3PO4 では、Li.xyz を何個置くか、PO4.xyz を何個置くかを structures に渡す。
+    FeSiB では、Fe.xyz、Si.xyz、B.xyz をそれぞれ何個置くかを structures に渡す。
     """
     if len(symbols) != len(ratios):
         raise ValueError("symbols と ratios の長さが一致していません。")
@@ -147,7 +202,10 @@ def make_material_recipe(
 
     total_atom_count: int = 0
     for structure in structure_list:
-        total_atom_count = total_atom_count + structure.number
+        atom_count_in_template: int = _count_atoms_in_xyz_file(
+            xyz_file=structure.xyz_file,
+        )
+        total_atom_count = total_atom_count + structure.number * atom_count_in_template
 
     return MaterialRecipe(
         total_atom_count=total_atom_count,
@@ -155,6 +213,25 @@ def make_material_recipe(
         ratios=ratio_list,
         structures=structure_list,
     )
+
+
+def _count_atoms_in_xyz_file(
+    xyz_file: str,
+) -> int:
+    """
+    XYZ ファイル先頭行から、1 テンプレート中の原子数を読む。
+
+    単原子テンプレートなら 1、PO4 テンプレートなら 5 を返す。
+    MaterialRecipe.total_atom_count を、structure の個数ではなく実際の総原子数にするために使う。
+    """
+    with open(xyz_file, "r") as f:
+        first_line: str = f.readline().strip()
+
+    atom_count: int = int(first_line)
+    if atom_count <= 0:
+        raise ValueError(f"XYZ ファイルの原子数が正ではない: {xyz_file}")
+
+    return atom_count
 
 
 def make_atomic_mixture_recipe(
@@ -165,6 +242,14 @@ def make_atomic_mixture_recipe(
 ) -> MaterialRecipe:
     """
     複数元素の単原子テンプレートを作り、Packmol 用レシピを返す。
+
+    FeSiB のように、分子ユニットを使わず、Fe、Si、B の単原子をそれぞれ指定数だけ
+    ランダム配置する場合に使う。
+
+    total_atom_count は、最終セルに入れる総原子数である。
+    ratios の比に従い、各元素の原子数を決める。
+    例えば total_atom_count=100、ratios=[80, 9, 11] なら、Fe 80 個、Si 9 個、
+    B 11 個の単原子テンプレートを Packmol に配置させる recipe を作る。
     """
     if len(symbols) != len(ratios):
         raise ValueError("symbols と ratios の長さが一致していません。")

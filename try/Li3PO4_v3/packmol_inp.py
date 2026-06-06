@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
 """
 Packmol の入力ファイルを構築するための共通クラスである。
+
+このファイルは、物質固有の構造を知らない。
+make_*.py 側から渡された structure 情報を、Packmol の .inp 形式へ変換する。
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TextIO
 
 
 class PackmolInp:
     """
-    Packmol の .inp ファイルを構築するための単純なクラスである。
+    Packmol の .inp ファイルを構築するためのクラスである。
+
+    minimum_separation_distance は、Packmol 入力ファイル先頭の tolerance に対応する。
+    これは、配置時に原子や分子ユニットが近づきすぎないようにする全体条件である。
+
+    add_structure() で登録する 1 件が、Packmol 入力の structure ... end structure
+    ブロック 1 個に対応する。
     """
 
     def __init__(
@@ -31,7 +40,14 @@ class PackmolInp:
         packing_radii_by_atom_symbol: Optional[Dict[str, float]] = None,
     ) -> None:
         """
-        1つの分子または単原子テンプレートに対する structure ブロックを登録する。
+        1 つの単原子テンプレートまたは分子ユニットテンプレートを登録する。
+
+        xyz_file は、Li.xyz、Fe.xyz、PO4.xyz などのテンプレート座標である。
+        number は、そのテンプレートを Packmol が何個配置するかである。
+
+        packing_radii_by_atom_symbol は、必要な場合だけ指定する配置用の排除半径である。
+        これは分子内距離ではない。例えば PO4 の P-O 距離や O-O 距離は、PO4.xyz を
+        作る段階で決まる。
         """
         block: Dict[str, object] = {
             "xyz": xyz_file,
@@ -45,7 +61,10 @@ class PackmolInp:
         xyz_file: str,
     ) -> List[str]:
         """
-        XYZ ファイルから Packmol の atom index に対応する元素記号列を読む。
+        XYZ ファイルから、Packmol の atom index に対応する元素記号列を読む。
+
+        Packmol の atoms 指定は 1 始まりの atom index を使う。
+        make_*.py 側では元素記号で指定し、この関数で XYZ 内の並び順を読み取る。
         """
         atom_symbols: List[str] = []
 
@@ -79,6 +98,9 @@ class PackmolInp:
     ) -> Dict[str, List[int]]:
         """
         元素記号から Packmol の 1 始まり atom index への対応を作る。
+
+        例えば PO4.xyz が P, O, O, O, O の順なら、P -> [1]、O -> [2, 3, 4, 5]
+        という対応を作る。
         """
         atom_symbols: List[str] = self._read_xyz_atom_symbols(xyz_file=xyz_file)
         atom_indices_by_symbol: Dict[str, List[int]] = {}
@@ -95,12 +117,15 @@ class PackmolInp:
 
     def _write_packing_radii_by_atom_symbol(
         self,
-        file_object,
+        file_object: TextIO,
         xyz_file: str,
         packing_radii_by_atom_symbol: Dict[str, float],
     ) -> None:
         """
         元素記号で指定された packing 半径を Packmol の atom index 指定へ変換して書く。
+
+        Packmol の radius 指定は atom index に対して行うため、ここで XYZ ファイルを読んで
+        元素記号から atom index へ変換する。
         """
         atom_indices_by_symbol: Dict[str, List[int]] = self._make_atom_indices_by_symbol(
             xyz_file=xyz_file,
@@ -116,29 +141,33 @@ class PackmolInp:
             atom_indices_text: str = " ".join(str(atom_index) for atom_index in atom_indices)
             radius: float = packing_radii_by_atom_symbol[atom_symbol]
 
-            file_object.write(f"  atoms {atom_indices_text} ")
-            file_object.write(f"    radius {radius:.6f} ")
-            file_object.write("  end atoms ")
+            file_object.write(f"  atoms {atom_indices_text}\n")
+            file_object.write(f"    radius {radius:.6f}\n")
+            file_object.write("  end atoms\n")
 
     def write(
         self,
         inp_file: str,
     ) -> None:
         """
-        .inp ファイルを書き出す。
+        Packmol の .inp ファイルを書き出す。
+
+        ここで、make_*.py 側で作った recipe が、Packmol の具体的な入力形式になる。
+        structure ブロックは、1 種類の単原子テンプレートまたは 1 種類の分子ユニットを
+        Packmol に何個配置させるかを表す。
         """
         box_length: float = self.box_length
 
         with open(inp_file, "w") as f:
-            f.write(f"tolerance {self.minimum_separation_distance} ")
+            f.write(f"tolerance {self.minimum_separation_distance}\n")
 
             if self.use_pbc:
                 f.write(
-                    f"pbc {box_length:.6f} {box_length:.6f} {box_length:.6f} "
+                    f"pbc {box_length:.6f} {box_length:.6f} {box_length:.6f}\n"
                 )
 
-            f.write("filetype xyz ")
-            f.write(f"output {self.output_xyz} ")
+            f.write("filetype xyz\n")
+            f.write(f"output {self.output_xyz}\n\n")
 
             for structure_block in self.structure_blocks:
                 xyz_file = str(structure_block["xyz"])
@@ -147,12 +176,13 @@ class PackmolInp:
                     "packing_radii_by_atom_symbol"
                 )
 
-                f.write(f"structure {xyz_file} ")
-                f.write(f"  number {number} ")
+                f.write(f"structure {xyz_file}\n")
+                f.write(f"  number {number}\n")
                 f.write(
                     "  inside box "
                     "0.0 0.0 0.0  "
-                    f"{box_length:.6f} {box_length:.6f} {box_length:.6f} " )
+                    f"{box_length:.6f} {box_length:.6f} {box_length:.6f}\n"
+                )
 
                 if packing_radii_by_atom_symbol is not None:
                     if not isinstance(packing_radii_by_atom_symbol, dict):
@@ -165,4 +195,4 @@ class PackmolInp:
                         packing_radii_by_atom_symbol=packing_radii_by_atom_symbol,
                     )
 
-                f.write("end structure")
+                f.write("end structure\n\n")
