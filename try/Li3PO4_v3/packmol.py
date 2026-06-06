@@ -10,7 +10,7 @@ make_amorphous.py
 
     1. 化学量論比（整数比）
     2. 密度 [g/cm^3] または 数密度 [1/Å^3] のいずれか一方
-    3. セル内の総原子数 N_tot
+    3. セル内の総原子数 total_atom_count
 
 Packmol は密度・化学量論比の概念を持たないため、本スクリプト側で
 原子数とセル一辺長 L を計算し、Packmol 形式の inside box 指定に変換する。
@@ -125,7 +125,7 @@ class Packmol:
 
     def cell_length_from_number_density(
         self,
-        N_tot: int,
+        total_atom_count: int,
         number_density_A3: float,
     ) -> float:
         """汎用
@@ -133,12 +133,12 @@ class Packmol:
         総原子数と数密度から立方体セル長 L [Å] を計算する。
         """
         self._logger.info("== cell_length_from_number_density()")
-        if N_tot <= 0:
-            raise ValueError("N_tot は正の整数である必要があります。")
+        if total_atom_count <= 0:
+            raise ValueError("total_atom_count は正の整数である必要があります。")
         if number_density_A3 <= 0.0:
             raise ValueError("数密度 number_density_A3 は正の値である必要があります。")
 
-        volume_A3: float = float(N_tot) / number_density_A3
+        volume_A3: float = float(total_atom_count) / number_density_A3
         L: float = volume_A3 ** (1.0 / 3.0)
         return L
 
@@ -146,11 +146,11 @@ class Packmol:
         self,
         symbols: Sequence[str],
         ratios: Sequence[int],
-        N_tot: int,
+        total_atom_count: int,
     ) -> Dict[str, int]:
         """汎用
 
-        化学量論比と N_tot から各元素の原子数を決める。
+        化学量論比と total_atom_count から各元素の原子数を決める。
         """
         self._logger.info("== compute_element_counts()")
         if len(symbols) != len(ratios):
@@ -158,8 +158,8 @@ class Packmol:
                 "元素記号の種類数と、それに対応する化学量論比の個数が一致していません。"
             )
 
-        if N_tot <= 0:
-            raise ValueError("N_tot は正の整数で指定してください。")
+        if total_atom_count <= 0:
+            raise ValueError("total_atom_count は正の整数で指定してください。")
 
         ratio_sum: int = sum(ratios)
         if ratio_sum <= 0:
@@ -167,12 +167,12 @@ class Packmol:
 
         ideal_counts: List[float] = []
         for ratio in ratios:
-            ideal = N_tot * float(ratio) / float(ratio_sum)
+            ideal = total_atom_count * float(ratio) / float(ratio_sum)
             ideal_counts.append(ideal)
 
         int_counts: List[int] = [int(x) for x in ideal_counts]
         used: int = sum(int_counts)
-        remainder: int = N_tot - used
+        remainder: int = total_atom_count - used
 
         if remainder > 0:
             frac_list: List[Tuple[int, float]] = []

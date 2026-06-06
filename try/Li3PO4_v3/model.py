@@ -26,7 +26,7 @@ class MaterialRecipe:
     Packmol 入力準備情報。
     """
 
-    N_tot: int
+    total_atom_count: int
     symbols: List[str]
     ratios: List[int]
     structures: List[StructureSpec]
@@ -100,12 +100,12 @@ def make_material_recipe(
     ratio_list: List[int] = list(ratios)
     structure_list: List[StructureSpec] = list(structures)
 
-    N_tot: int = 0
+    total_atom_count: int = 0
     for structure in structure_list:
-        N_tot = N_tot + structure.number
+        total_atom_count = total_atom_count + structure.number
 
     return MaterialRecipe(
-        N_tot=N_tot,
+        total_atom_count=total_atom_count,
         symbols=symbol_list,
         ratios=ratio_list,
         structures=structure_list,
@@ -115,7 +115,7 @@ def make_material_recipe(
 def make_atomic_mixture_recipe(
     symbols: Sequence[str],
     ratios: Sequence[int],
-    N_tot: int,
+    total_atom_count: int,
     xyz_files: Optional[Sequence[str]] = None,
 ) -> MaterialRecipe:
     """
@@ -124,15 +124,15 @@ def make_atomic_mixture_recipe(
     if len(symbols) != len(ratios):
         raise ValueError("symbols と ratios の長さが一致していません。")
 
-    if N_tot <= 0:
-        raise ValueError("N_tot は正の整数である必要があります。")
+    if total_atom_count <= 0:
+        raise ValueError("total_atom_count は正の整数である必要があります。")
 
     ratio_sum: int = sum(ratios)
     if ratio_sum <= 0:
         raise ValueError("ratios の合計は正の整数である必要があります。")
 
-    if N_tot % ratio_sum != 0:
-        raise ValueError("N_tot は ratios の合計の整数倍である必要があります。")
+    if total_atom_count % ratio_sum != 0:
+        raise ValueError("total_atom_count は ratios の合計の整数倍である必要があります。")
 
     if xyz_files is None:
         actual_xyz_files: List[str] = []
@@ -143,7 +143,7 @@ def make_atomic_mixture_recipe(
             raise ValueError("symbols と xyz_files の長さが一致していません。")
         actual_xyz_files = list(xyz_files)
 
-    multiplier: int = N_tot // ratio_sum
+    multiplier: int = total_atom_count // ratio_sum
     structures: List[StructureSpec] = []
 
     for symbol, ratio, xyz_file in zip(symbols, ratios, actual_xyz_files):
@@ -152,7 +152,7 @@ def make_atomic_mixture_recipe(
         structures.append(StructureSpec(xyz_file=xyz_file, number=atom_count))
 
     return MaterialRecipe(
-        N_tot=N_tot,
+        total_atom_count=total_atom_count,
         symbols=list(symbols),
         ratios=list(ratios),
         structures=structures,

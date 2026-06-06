@@ -10,7 +10,7 @@ def main() -> None:
     FeSiB の使用例。
     物質固有パラメーターはこのスクリプト内で与える。
     """
-    N_tot: int = 100
+    total_atom_count: int = 100
     mass_density_g_cm3: float = 7.0
 
     symbols = ["Fe", "Si", "B"]
@@ -33,7 +33,7 @@ def main() -> None:
     recipe = make_atomic_mixture_recipe(
         symbols=symbols,
         ratios=ratios,
-        N_tot=N_tot,
+        total_atom_count=total_atom_count,
         xyz_files=xyz_files,
     )
 
@@ -43,7 +43,7 @@ def main() -> None:
         mass_density_g_cm3=mass_density_g_cm3,
     )
     L: float = packmol.cell_length_from_number_density(
-        N_tot=recipe.N_tot,
+        total_atom_count=recipe.total_atom_count,
         number_density_A3=number_density_A3,
     )
 

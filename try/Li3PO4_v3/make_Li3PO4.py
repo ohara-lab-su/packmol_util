@@ -68,7 +68,7 @@ def main() -> None:
     )
 
     L: float = packmol.cell_length_from_number_density(
-        N_tot=recipe.N_tot,
+        total_atom_count=recipe.total_atom_count,
         number_density_A3=number_density_A3,
     )
 
