@@ -3,6 +3,8 @@
 K.NAKADA, kengo.nakada@gmail.com
 """
 
+from typing import Dict, List, Optional
+
 
 class PackmolInp:
     """
@@ -25,23 +27,27 @@ class PackmolInp:
         tolerance: float,
         output_xyz: str,
         box_length: float,
-    ):
-        self.tolerance = tolerance
-        self.output_xyz = output_xyz
-        self.box_length = box_length
-        self.structure_blocks = []
+        use_pbc: bool = False,
+    ) -> None:
+        self.tolerance: float = tolerance
+        self.output_xyz: str = output_xyz
+        self.box_length: float = box_length
+        self.use_pbc: bool = use_pbc
+        self.structure_blocks: List[Dict[str, object]] = []
 
     def add_structure(
         self,
         xyz_file: str,
         number: int,
+        atom_radii: Optional[Dict[int, float]] = None,
     ) -> None:
         """
         1つの分子（元素）に対する structure ブロックを登録する。
         """
-        block = {
+        block: Dict[str, object] = {
             "xyz": xyz_file,
             "number": number,
+            "atom_radii": atom_radii,
         }
         self.structure_blocks.append(block)
 
@@ -52,18 +58,35 @@ class PackmolInp:
         """
         .inp ファイルを書き出す。
         """
-        L = self.box_length
+        L: float = self.box_length
 
         with open(inp_file, "w") as f:
             f.write(f"tolerance {self.tolerance}\n")
+
+            if self.use_pbc:
+                f.write(f"pbc {L:.6f} {L:.6f} {L:.6f}\n")
+
             f.write("filetype xyz\n")
             f.write(f"output {self.output_xyz}\n\n")
 
             for blk in self.structure_blocks:
-                xyz = blk["xyz"]
-                num = blk["number"]
+                xyz = str(blk["xyz"])
+                num = int(blk["number"])
+                atom_radii = blk.get("atom_radii")
 
                 f.write(f"structure {xyz}\n")
                 f.write(f"  number {num}\n")
                 f.write(f"  inside box 0.0 0.0 0.0  {L:.6f} {L:.6f} {L:.6f}\n")
+
+                if atom_radii is not None:
+                    actual_atom_radii = atom_radii
+                    if not isinstance(actual_atom_radii, dict):
+                        raise TypeError("atom_radii は dict で指定してください。")
+
+                    for atom_index in sorted(actual_atom_radii.keys()):
+                        radius = actual_atom_radii[atom_index]
+                        f.write(f"  atoms {atom_index}\n")
+                        f.write(f"    radius {radius:.6f}\n")
+                        f.write("  end atoms\n")
+
                 f.write("end structure\n\n")

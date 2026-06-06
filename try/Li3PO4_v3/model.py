@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-材料依存のテンプレート構造を準備する補助関数。
+材料非依存のテンプレート構造を準備する補助関数。
 Packmol クラス本体へ材料専用処理を入れないために分離する。
 """
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -17,12 +17,13 @@ class StructureSpec:
 
     xyz_file: str
     number: int
+    atom_radii: Optional[Dict[int, float]] = None
 
 
 @dataclass(frozen=True)
 class MaterialRecipe:
     """
-    1 つの材料系に対する Packmol 入力準備情報。
+    Packmol 入力準備情報。
     """
 
     N_tot: int
@@ -60,102 +61,99 @@ def write_single_atom_xyz(
     )
 
 
-def write_po4_xyz(
+def write_tetrahedral_unit_xyz(
     filename: str,
-    p_o_distance: float = 1.54,
+    center_element: str,
+    vertex_element: str,
+    center_vertex_distance: float,
 ) -> None:
     """
-    正四面体 PO4 ユニットの XYZ テンプレートを書き出す。
+    中心原子 1 個と頂点原子 4 個からなる正四面体ユニットを書き出す。
     """
-    scale: float = p_o_distance / math.sqrt(3.0)
+    scale: float = center_vertex_distance / math.sqrt(3.0)
     atoms: List[Tuple[str, float, float, float]] = [
-        ("P", 0.0, 0.0, 0.0),
-        ("O", scale, scale, scale),
-        ("O", scale, -scale, -scale),
-        ("O", -scale, scale, -scale),
-        ("O", -scale, -scale, scale),
+        (center_element, 0.0, 0.0, 0.0),
+        (vertex_element, scale, scale, scale),
+        (vertex_element, scale, -scale, -scale),
+        (vertex_element, -scale, scale, -scale),
+        (vertex_element, -scale, -scale, scale),
     ]
     write_xyz_template(
         filename=filename,
         atoms=atoms,
-        comment="PO4 tetrahedral unit template",
+        comment=f"{center_element}{vertex_element}4 tetrahedral unit template",
     )
 
 
-def prepare_fesib_recipe(
-    N_tot: int,
-    fe_xyz: str = "Fe.xyz",
-    si_xyz: str = "Si.xyz",
-    b_xyz: str = "B.xyz",
+def make_material_recipe(
+    symbols: Sequence[str],
+    ratios: Sequence[int],
+    structures: Sequence[StructureSpec],
 ) -> MaterialRecipe:
     """
-    FeSiB 用のテンプレートと個数を準備する。
+    元素、組成比、Packmol structure 情報からレシピを作る。
     """
+    if len(symbols) != len(ratios):
+        raise ValueError("symbols と ratios の長さが一致していません。")
+
+    symbol_list: List[str] = list(symbols)
+    ratio_list: List[int] = list(ratios)
+    structure_list: List[StructureSpec] = list(structures)
+
+    N_tot: int = 0
+    for structure in structure_list:
+        N_tot = N_tot + structure.number
+
+    return MaterialRecipe(
+        N_tot=N_tot,
+        symbols=symbol_list,
+        ratios=ratio_list,
+        structures=structure_list,
+    )
+
+
+def make_atomic_mixture_recipe(
+    symbols: Sequence[str],
+    ratios: Sequence[int],
+    N_tot: int,
+    xyz_files: Optional[Sequence[str]] = None,
+) -> MaterialRecipe:
+    """
+    複数元素の単原子テンプレートを作り、Packmol 用レシピを返す。
+    """
+    if len(symbols) != len(ratios):
+        raise ValueError("symbols と ratios の長さが一致していません。")
+
     if N_tot <= 0:
         raise ValueError("N_tot は正の整数である必要があります。")
 
-    symbols: List[str] = ["Fe", "Si", "B"]
-    ratios: List[int] = [80, 9, 11]
-
     ratio_sum: int = sum(ratios)
+    if ratio_sum <= 0:
+        raise ValueError("ratios の合計は正の整数である必要があります。")
+
     if N_tot % ratio_sum != 0:
-        raise ValueError(
-            "N_tot は Fe80Si9B11 の比率合計 100 の整数倍である必要があります。"
-        )
+        raise ValueError("N_tot は ratios の合計の整数倍である必要があります。")
+
+    if xyz_files is None:
+        actual_xyz_files: List[str] = []
+        for symbol in symbols:
+            actual_xyz_files.append(f"{symbol}.xyz")
+    else:
+        if len(symbols) != len(xyz_files):
+            raise ValueError("symbols と xyz_files の長さが一致していません。")
+        actual_xyz_files = list(xyz_files)
 
     multiplier: int = N_tot // ratio_sum
+    structures: List[StructureSpec] = []
 
-    fe_count: int = ratios[0] * multiplier
-    si_count: int = ratios[1] * multiplier
-    b_count: int = ratios[2] * multiplier
-
-    write_single_atom_xyz(filename=fe_xyz, element="Fe")
-    write_single_atom_xyz(filename=si_xyz, element="Si")
-    write_single_atom_xyz(filename=b_xyz, element="B")
-
-    structures: List[StructureSpec] = [
-        StructureSpec(xyz_file=fe_xyz, number=fe_count),
-        StructureSpec(xyz_file=si_xyz, number=si_count),
-        StructureSpec(xyz_file=b_xyz, number=b_count),
-    ]
+    for symbol, ratio, xyz_file in zip(symbols, ratios, actual_xyz_files):
+        atom_count: int = ratio * multiplier
+        write_single_atom_xyz(filename=xyz_file, element=symbol)
+        structures.append(StructureSpec(xyz_file=xyz_file, number=atom_count))
 
     return MaterialRecipe(
         N_tot=N_tot,
-        symbols=symbols,
-        ratios=ratios,
-        structures=structures,
-    )
-
-
-def prepare_li3po4_recipe(
-    formula_unit_count: int,
-    li_xyz: str = "Li.xyz",
-    po4_xyz: str = "PO4.xyz",
-    p_o_distance: float = 1.54,
-) -> MaterialRecipe:
-    """
-    Li3PO4 用のテンプレートと個数を準備する。
-    """
-    if formula_unit_count <= 0:
-        raise ValueError("formula_unit_count は正の整数である必要があります。")
-
-    li_count: int = formula_unit_count * 3
-    po4_count: int = formula_unit_count
-    N_tot: int = formula_unit_count * 8
-    symbols: List[str] = ["Li", "P", "O"]
-    ratios: List[int] = [3, 1, 4]
-
-    write_single_atom_xyz(filename=li_xyz, element="Li")
-    write_po4_xyz(filename=po4_xyz, p_o_distance=p_o_distance)
-
-    structures: List[StructureSpec] = [
-        StructureSpec(xyz_file=li_xyz, number=li_count),
-        StructureSpec(xyz_file=po4_xyz, number=po4_count),
-    ]
-
-    return MaterialRecipe(
-        N_tot=N_tot,
-        symbols=symbols,
-        ratios=ratios,
+        symbols=list(symbols),
+        ratios=list(ratios),
         structures=structures,
     )
