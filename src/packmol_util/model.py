@@ -253,6 +253,68 @@ def make_material_recipe(
         structures=structure_list,
     )
 
+def _normalize_atom_pair(
+    atom_symbol_a: str,
+    atom_symbol_b: str,
+) -> Tuple[str, str]:
+    if atom_symbol_a <= atom_symbol_b:
+        return atom_symbol_a, atom_symbol_b
+    return atom_symbol_b, atom_symbol_a
+
+
+def solve_packing_radii_from_pair_distances(
+    symbols: Sequence[str],
+    minimum_distances_by_pair: Dict[Tuple[str, str], float],
+    distance_tolerance: float = 0.05,
+) -> Dict[str, float]:
+    """
+    希望する元素ペア最小距離 d_ij が Packmol の半径和モデル
+
+        d_ij = r_i + r_j
+
+    で表現可能かを確認し、可能なら元素ごとの packing 半径を返す。
+    不可能なら ValueError を投げる。
+    """
+    symbol_list: List[str] = list(symbols)
+    if len(symbol_list) == 0:
+        raise ValueError("symbols は 1 つ以上必要である。")
+
+    for distance in minimum_distances_by_pair.values():
+        if distance <= 0.0:
+            raise ValueError("最小距離は正の値である必要がある。")
+
+    diagonal_distances: Dict[str, float] = {}
+    for symbol in symbol_list:
+        key = _normalize_atom_pair(symbol, symbol)
+        if key not in minimum_distances_by_pair:
+            raise ValueError(f"自己ペア距離 {key} が指定されていない。")
+        diagonal_distances[symbol] = minimum_distances_by_pair[key]
+
+    radii: Dict[str, float] = {}
+    for symbol in symbol_list:
+        radii[symbol] = diagonal_distances[symbol] / 2.0
+
+    for atom_symbol_a in symbol_list:
+        for atom_symbol_b in symbol_list:
+            pair_key = _normalize_atom_pair(atom_symbol_a, atom_symbol_b)
+            if pair_key not in minimum_distances_by_pair:
+                raise ValueError(f"元素ペア距離 {pair_key} が指定されていない。")
+
+            target_distance: float = minimum_distances_by_pair[pair_key]
+            fitted_distance: float = radii[atom_symbol_a] + radii[atom_symbol_b]
+            error: float = abs(target_distance - fitted_distance)
+
+            if error > distance_tolerance:
+                raise ValueError(
+                    "指定された pair distance は Packmol の半径和モデルでは両立しない。"
+                    f" pair={pair_key},"
+                    f" target_distance={target_distance:.6f},"
+                    f" fitted_distance={fitted_distance:.6f},"
+                    f" error={error:.6f},"
+                    f" distance_tolerance={distance_tolerance:.6f}"
+                )
+
+    return radii
 
 def _count_atoms_in_xyz_file(
     xyz_file: str,
