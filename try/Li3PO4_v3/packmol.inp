@@ -1,0 +1,14 @@
+tolerance 1.8
+filetype xyz
+output li3po4_packmol.xyz
+
+structure Li.xyz
+  number 192
+  inside box 0.0 0.0 0.0  17.102534 17.102534 17.102534
+end structure
+
+structure PO4.xyz
+  number 64
+  inside box 0.0 0.0 0.0  17.102534 17.102534 17.102534
+end structure
+
