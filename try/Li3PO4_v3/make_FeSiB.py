@@ -48,7 +48,7 @@ def main() -> None:
     )
 
     builder = PackmolInp(
-        tolerance=2.3,
+        minimum_separation_distance=2.3,
         output_xyz=output_xyz,
         box_length=L,
     )
@@ -56,7 +56,7 @@ def main() -> None:
         builder.add_structure(
             xyz_file=structure.xyz_file,
             number=structure.number,
-            atom_radii=structure.atom_radii,
+            packing_radii_by_atom_index=structure.packing_radii_by_atom_index,
         )
     builder.write(input_file)
 

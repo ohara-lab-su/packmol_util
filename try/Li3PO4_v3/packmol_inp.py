@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-K.NAKADA, kengo.nakada@gmail.com
+Packmol の入力ファイルを構築するための共通クラスである。
 """
 
 from typing import Dict, List, Optional
@@ -8,28 +8,17 @@ from typing import Dict, List, Optional
 
 class PackmolInp:
     """
-    Packmol の .inp ファイルを構築するための単純なクラス。
-
-    builder = PackmolInp(
-        tolerance=2.3,
-        output_xyz="result.xyz",
-        box_length=L)
-
-    builder.add_structure("Fe.xyz", N_Fe)
-    builder.add_structure("Si.xyz", N_Si)
-    builder.add_structure("B.xyz", N_B)
-
-    builder.write("packmol.inp")
+    Packmol の .inp ファイルを構築するための単純なクラスである。
     """
 
     def __init__(
         self,
-        tolerance: float,
+        minimum_separation_distance: float,
         output_xyz: str,
         box_length: float,
         use_pbc: bool = False,
     ) -> None:
-        self.tolerance: float = tolerance
+        self.minimum_separation_distance: float = minimum_separation_distance
         self.output_xyz: str = output_xyz
         self.box_length: float = box_length
         self.use_pbc: bool = use_pbc
@@ -39,15 +28,15 @@ class PackmolInp:
         self,
         xyz_file: str,
         number: int,
-        atom_radii: Optional[Dict[int, float]] = None,
+        packing_radii_by_atom_index: Optional[Dict[int, float]] = None,
     ) -> None:
         """
-        1つの分子（元素）に対する structure ブロックを登録する。
+        1つの分子または単原子テンプレートに対する structure ブロックを登録する。
         """
         block: Dict[str, object] = {
             "xyz": xyz_file,
             "number": number,
-            "atom_radii": atom_radii,
+            "packing_radii_by_atom_index": packing_radii_by_atom_index,
         }
         self.structure_blocks.append(block)
 
@@ -58,33 +47,42 @@ class PackmolInp:
         """
         .inp ファイルを書き出す。
         """
-        L: float = self.box_length
+        box_length: float = self.box_length
 
         with open(inp_file, "w") as f:
-            f.write(f"tolerance {self.tolerance}\n")
+            f.write(f"tolerance {self.minimum_separation_distance}\n")
 
             if self.use_pbc:
-                f.write(f"pbc {L:.6f} {L:.6f} {L:.6f}\n")
+                f.write(
+                    f"pbc {box_length:.6f} {box_length:.6f} {box_length:.6f}\n"
+                )
 
             f.write("filetype xyz\n")
             f.write(f"output {self.output_xyz}\n\n")
 
-            for blk in self.structure_blocks:
-                xyz = str(blk["xyz"])
-                num = int(blk["number"])
-                atom_radii = blk.get("atom_radii")
+            for structure_block in self.structure_blocks:
+                xyz_file = str(structure_block["xyz"])
+                number = int(structure_block["number"])
+                packing_radii_by_atom_index = structure_block.get(
+                    "packing_radii_by_atom_index"
+                )
 
-                f.write(f"structure {xyz}\n")
-                f.write(f"  number {num}\n")
-                f.write(f"  inside box 0.0 0.0 0.0  {L:.6f} {L:.6f} {L:.6f}\n")
+                f.write(f"structure {xyz_file}\n")
+                f.write(f"  number {number}\n")
+                f.write(
+                    "  inside box "
+                    "0.0 0.0 0.0  "
+                    f"{box_length:.6f} {box_length:.6f} {box_length:.6f}\n"
+                )
 
-                if atom_radii is not None:
-                    actual_atom_radii = atom_radii
-                    if not isinstance(actual_atom_radii, dict):
-                        raise TypeError("atom_radii は dict で指定してください。")
+                if packing_radii_by_atom_index is not None:
+                    if not isinstance(packing_radii_by_atom_index, dict):
+                        raise TypeError(
+                            "packing_radii_by_atom_index は dict で指定する。"
+                        )
 
-                    for atom_index in sorted(actual_atom_radii.keys()):
-                        radius = actual_atom_radii[atom_index]
+                    for atom_index in sorted(packing_radii_by_atom_index.keys()):
+                        radius = packing_radii_by_atom_index[atom_index]
                         f.write(f"  atoms {atom_index}\n")
                         f.write(f"    radius {radius:.6f}\n")
                         f.write("  end atoms\n")
