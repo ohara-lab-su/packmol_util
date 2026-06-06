@@ -36,12 +36,9 @@ def main() -> None:
     li_count: int = formula_unit_count * 3
     po4_count: int = formula_unit_count
 
-    po4_packing_radii_by_atom_index = {
-        1: 0.25,
-        2: 1.05,
-        3: 1.05,
-        4: 1.05,
-        5: 1.05,
+    po4_packing_radii_by_atom_symbol = {
+        "P": 0.25,
+        "O": 1.05,
     }
 
     packmol = Packmol(
@@ -69,7 +66,7 @@ def main() -> None:
             StructureSpec(
                 xyz_file=po4_xyz,
                 number=po4_count,
-                packing_radii_by_atom_index=po4_packing_radii_by_atom_index,
+                packing_radii_by_atom_symbol=po4_packing_radii_by_atom_symbol,
             ),
         ],
     )
@@ -89,7 +86,7 @@ def main() -> None:
         builder.add_structure(
             xyz_file=structure.xyz_file,
             number=structure.number,
-            packing_radii_by_atom_index=structure.packing_radii_by_atom_index,
+            packing_radii_by_atom_symbol=structure.packing_radii_by_atom_symbol,
         )
     builder.write(input_file)
 

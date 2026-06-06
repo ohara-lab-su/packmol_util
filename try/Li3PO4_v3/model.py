@@ -17,7 +17,7 @@ class StructureSpec:
 
     xyz_file: str
     number: int
-    packing_radii_by_atom_index: Optional[Dict[int, float]] = None
+    packing_radii_by_atom_symbol: Optional[Dict[str, float]] = None
 
 
 @dataclass(frozen=True)
