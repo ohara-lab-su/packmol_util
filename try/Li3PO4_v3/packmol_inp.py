@@ -27,10 +27,21 @@ class PackmolInp:
         box_length: float,
         use_pbc: bool = False,
     ) -> None:
+        # Packmol 入力ファイルでは tolerance として出力する。
+        # Python 側では物理的な意味に近い名前として minimum_separation_distance を使う。
         self.minimum_separation_distance: float = minimum_separation_distance
+
+        # Packmol が生成する XYZ ファイル名である。
         self.output_xyz: str = output_xyz
+
+        # 立方体セルの一辺長 [Å] である。inside box と pbc の両方で使う。
         self.box_length: float = box_length
+
+        # Packmol の pbc 行を出すかどうかを表す。
         self.use_pbc: bool = use_pbc
+
+        # add_structure() で登録された structure ブロックを一時的に保持する。
+        # ここには物質固有の意味ではなく、Packmol 入力へ出すための情報だけを置く。
         self.structure_blocks: List[Dict[str, object]] = []
 
     def add_structure(
@@ -49,6 +60,8 @@ class PackmolInp:
         これは分子内距離ではない。例えば PO4 の P-O 距離や O-O 距離は、PO4.xyz を
         作る段階で決まる。
         """
+        # ここではまだ Packmol 入力ファイルには書かない。
+        # write() が呼ばれた時点で、登録済み block を順に structure ... end structure へ変換する。
         block: Dict[str, object] = {
             "xyz": xyz_file,
             "number": number,
@@ -74,6 +87,7 @@ class PackmolInp:
         if len(raw_lines) < 2:
             raise ValueError(f"XYZ ファイルの行数が不足している: {xyz_file}")
 
+        # XYZ の 1 行目はテンプレート内原子数、2 行目はコメント行である。
         atom_count_text: str = raw_lines[0].strip()
         atom_count: int = int(atom_count_text)
         atom_lines: List[str] = raw_lines[2:]
@@ -83,6 +97,8 @@ class PackmolInp:
 
         line_index: int = 0
         while line_index < atom_count:
+            # 各原子行の 1 列目だけを元素記号として使う。
+            # 座標値は Packmol の atom index 変換には不要である。
             atom_line: str = atom_lines[line_index].strip()
             fields: List[str] = atom_line.split()
             if len(fields) < 1:
@@ -107,6 +123,7 @@ class PackmolInp:
 
         atom_position: int = 0
         for atom_symbol in atom_symbols:
+            # Packmol の atoms 指定は 1 始まりなので、Python の位置に 1 を足す。
             atom_index: int = atom_position + 1
             if atom_symbol not in atom_indices_by_symbol:
                 atom_indices_by_symbol[atom_symbol] = []
@@ -137,10 +154,12 @@ class PackmolInp:
                     f"{xyz_file} に元素記号 {atom_symbol} が存在しない。"
                 )
 
+            # 例えば PO4.xyz が P, O, O, O, O の順なら、O は atoms 2 3 4 5 になる。
             atom_indices: List[int] = atom_indices_by_symbol[atom_symbol]
             atom_indices_text: str = " ".join(str(atom_index) for atom_index in atom_indices)
             radius: float = packing_radii_by_atom_symbol[atom_symbol]
 
+            # Packmol の atoms ブロックとして、同一元素記号に対応する atom index をまとめて出す。
             file_object.write(f"  atoms {atom_indices_text}\n")
             file_object.write(f"    radius {radius:.6f}\n")
             file_object.write("  end atoms\n")
@@ -159,25 +178,35 @@ class PackmolInp:
         box_length: float = self.box_length
 
         with open(inp_file, "w") as f:
+            # 全 structure に共通する最小分離距離を Packmol の tolerance として書く。
             f.write(f"tolerance {self.minimum_separation_distance}\n")
 
             if self.use_pbc:
+                # 直交立方セルの周期境界条件を Packmol に渡す。
                 f.write(
                     f"pbc {box_length:.6f} {box_length:.6f} {box_length:.6f}\n"
                 )
 
+            # 入出力座標形式を XYZ に固定する。
             f.write("filetype xyz\n")
             f.write(f"output {self.output_xyz}\n\n")
 
             for structure_block in self.structure_blocks:
+                # ここから 1 個の Packmol structure ブロックを書き始める。
+                # 単原子テンプレートでも PO4 のような分子ユニットでも、Packmol では同じ structure として扱う。
                 xyz_file = str(structure_block["xyz"])
                 number = int(structure_block["number"])
                 packing_radii_by_atom_symbol = structure_block.get(
                     "packing_radii_by_atom_symbol"
                 )
 
+                # structure は、1 種類のテンプレート座標を Packmol に登録する行である。
                 f.write(f"structure {xyz_file}\n")
+
+                # number は、そのテンプレートを何個複製して配置するかを指定する。
                 f.write(f"  number {number}\n")
+                # inside box は、テンプレートの重心・配置位置が入る直方体領域を指定する。
+                # ここでは立方体セル全体を配置領域にしている。
                 f.write(
                     "  inside box "
                     "0.0 0.0 0.0  "
@@ -185,6 +214,7 @@ class PackmolInp:
                 )
 
                 if packing_radii_by_atom_symbol is not None:
+                    # 元素記号で指定された packing 半径を、Packmol が要求する atom index 指定へ変換する。
                     if not isinstance(packing_radii_by_atom_symbol, dict):
                         raise TypeError(
                             "packing_radii_by_atom_symbol は dict で指定する。"

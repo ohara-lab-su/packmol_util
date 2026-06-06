@@ -36,6 +36,8 @@ class Packmol:
         packmol_bin: Optional[str] = None,
         logger: Optional[XLogger] = None,
     ) -> None:
+        # Packmol 実行や変換処理で使うファイル名を保持する。
+        # make_*.py 側から明示されない場合は、標準的なファイル名を使う。
         self._logger: XLogger = logger or XLogger()
         self.input_file: str = input_file or "packmol.inp"
         self.output_xyz: str = output_xyz or "amorphous.xyz"
@@ -56,6 +58,8 @@ class Packmol:
         例: [80, 9, 11] -> 100
         """
         self._logger.info("== get_unit_atom_count()")
+        # ratios の和は、化学式 1 単位あたりの原子数に対応する。
+        # Fe80Si9B11 なら 100、Li3PO4 なら 8 である。
         total = 0
         for value in ratios:
             total = total + value
@@ -84,10 +88,12 @@ class Packmol:
         if len(symbols) != len(ratios):
             raise ValueError("symbols と ratios の長さが一致していません。")
 
+        # 平均原子量は、密度と数密度の換算に使う。
         total_atoms: int = sum(ratios)
         if total_atoms <= 0:
             raise ValueError("ratios の合計が 0 以下です。")
 
+        # 組成比で重み付けした原子量合計を作る。
         total_mass: float = 0.0
         for symbol, ratio in zip(symbols, ratios):
             atomic_weight: float = self.get_atomic_weight(symbol)
@@ -106,6 +112,8 @@ class Packmol:
         質量密度から数密度 n [1/Å^3] を計算する。
         """
         self._logger.info("== number_density_from_mass_density()")
+        # rho [g/cm3] * NA [1/mol] / M_avg [g/mol] で cm3 あたりの原子数になる。
+        # A3_TO_CM3 を掛けて A3 あたりの数密度に変換する。
         M_avg: float = self.average_atomic_weight(symbols, ratios)
         return mass_density_g_cm3 * NA * A3_TO_CM3 / M_avg
 
@@ -120,6 +128,7 @@ class Packmol:
         数密度 n [1/Å^3] から質量密度 ρ [g/cm^3] を計算する。
         """
         self._logger.info("== mass_density_from_number_density()")
+        # number_density_A3 [1/A3] を質量密度 [g/cm3] へ戻す逆変換である。
         M_avg: float = self.average_atomic_weight(symbols, ratios)
         return number_density_A3 * M_avg / (NA * A3_TO_CM3)
 
@@ -138,7 +147,10 @@ class Packmol:
         if number_density_A3 <= 0.0:
             raise ValueError("数密度 number_density_A3 は正の値である必要があります。")
 
+        # 数密度 n = N / V なので、V = N / n でセル体積を決める。
         volume_A3: float = float(total_atom_count) / number_density_A3
+
+        # 現状は立方体セルを前提としているため、L は体積の 3 乗根である。
         L: float = volume_A3 ** (1.0 / 3.0)
         return L
 
@@ -165,11 +177,13 @@ class Packmol:
         if ratio_sum <= 0:
             raise ValueError("化学量論比の総和が 0 以下です。")
 
+        # total_atom_count を組成比で割り付けた理想原子数をまず実数で作る。
         ideal_counts: List[float] = []
         for ratio in ratios:
             ideal = total_atom_count * float(ratio) / float(ratio_sum)
             ideal_counts.append(ideal)
 
+        # 整数化で失われた端数は、後で端数の大きい元素へ順に配る。
         int_counts: List[int] = [int(x) for x in ideal_counts]
         used: int = sum(int_counts)
         remainder: int = total_atom_count - used
@@ -180,12 +194,14 @@ class Packmol:
                 fractional = ideal - float(int_counts[i])
                 frac_list.append((i, fractional))
 
+            # 端数の大きい元素から 1 個ずつ足し、総原子数を合わせる。
             frac_list.sort(key=lambda x: x[1], reverse=True)
 
             for k in range(remainder):
                 idx: int = frac_list[k][0]
                 int_counts[idx] += 1
 
+        # 元素記号をキーとする原子数辞書に戻す。
         result: Dict[str, int] = {}
         for sym, cnt in zip(symbols, int_counts):
             result[sym] = cnt
@@ -208,6 +224,7 @@ class Packmol:
         multiplier = 1
         current_size = unit_atom_count * multiplier
 
+        # 組成比を崩さない総原子数だけを列挙する。
         while current_size <= max_atom_count:
             cell_sizes.append(current_size)
             multiplier = multiplier + 1
@@ -222,6 +239,7 @@ class Packmol:
     ) -> None:
         """単一原子のみを含む XYZ ファイルを生成する。"""
         self._logger.info("== write_single_atom_xyz()")
+        # Packmol に単原子を配置させるため、1 原子だけを含む XYZ を作る。
         with open(filename, "w") as f:
             f.write("1\n")
             f.write(f"{element} atom template\n")
@@ -244,6 +262,8 @@ class Packmol:
         if packmol_bin is None:
             packmol_bin = self.packmol_bin
 
+        # Packmol は標準入力から .inp を読むため、input_file を stdin に渡す。
+        # 標準出力と標準エラーはログファイルへまとめる。
         with open(input_file, "r") as fin, open(output_log, "w") as flog:
             result = subprocess.run(
                 [packmol_bin],
@@ -272,6 +292,7 @@ class Packmol:
         if elements is None:
             raise ValueError("elements は指定してください。")
 
+        # Packmol 出力 XYZ を読む。1 行目と 2 行目は XYZ のヘッダなので飛ばす。
         with open(xyz_file, "r") as f:
             lines = f.readlines()
 
@@ -284,6 +305,7 @@ class Packmol:
             x, y, z = map(float, parts[1:4])
             xyz_atoms.append((sym, x, y, z))
 
+        # POSCAR の格子長には、Packmol 入力の inside box で指定したセル長を使う。
         L = None
         with open(packmol_inp, "r") as f:
             for line in f:
@@ -295,8 +317,10 @@ class Packmol:
         if L is None:
             raise RuntimeError(f"{packmol_inp} から L を取得できませんでした。")
 
+        # Packmol 出力は Cartesian 座標なので、VASP POSCAR 用に Direct 座標へ変換する。
         frac_atoms = [(sym, x / L, y / L, z / L) for sym, x, y, z in xyz_atoms]
 
+        # POSCAR では元素ごとに座標をまとめて出力するため、元素別に数と座標を集める。
         species_counts = {s: 0 for s in elements}
         species_positions = {s: [] for s in elements}
 
@@ -307,6 +331,7 @@ class Packmol:
             else:
                 raise RuntimeError(f"未知の元素シンボル: {sym}")
 
+        # VASP5 形式の POSCAR を書く。元素順序は make_*.py 側の symbols に従う。
         with open(poscar_file, "w") as f:
             f.write(f"{comment}\n")
             f.write("1.0\n")
