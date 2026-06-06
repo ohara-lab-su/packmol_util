@@ -76,9 +76,16 @@ class PackmolInp:
         """
         XYZ ファイルから、Packmol の atom index に対応する元素記号列を読む。
 
-        Packmol の atoms 指定は 1 始まりの atom index を使う。
-        make_*.py 側では元素記号で指定し、この関数で XYZ 内の並び順を読み取る。
+        Packmol の radius 指定は atoms 1 2 3 のような 1 始まり index で書く。
+        しかし make_*.py 側で 1, 2, 3 を直接書くと、XYZ の原子順に強く依存して読みにくくなる。
+        そのため、make_*.py 側では {"P": 0.25, "O": 1.05} のように元素記号で書き、
+        この関数で XYZ 内の実際の原子順を読む。
+
+        返り値は ["P", "O", "O", "O", "O"] のようなリストである。
+        このリストの 0 番目が Packmol の atoms 1 に対応する。
         """
+        # XYZ 内の atom index 順に元素記号だけを保存する。
+        # 座標値は、radius 指定を atom index に変換する処理では使わない。
         atom_symbols: List[str] = []
 
         with open(xyz_file, "r") as f:
@@ -117,7 +124,12 @@ class PackmolInp:
 
         例えば PO4.xyz が P, O, O, O, O の順なら、P -> [1]、O -> [2, 3, 4, 5]
         という対応を作る。
+
+        この対応は Packmol 入力へ radius を書くためだけに使う。
+        PO4 の P-O 距離や O-O 距離は、この関数では決めない。
+        分子ユニット内部の距離は model.py の write_tetrahedral_unit_xyz() で決まる。
         """
+        # XYZ の原子順を読み、同じ元素記号を持つ atom index をまとめる。
         atom_symbols: List[str] = self._read_xyz_atom_symbols(xyz_file=xyz_file)
         atom_indices_by_symbol: Dict[str, List[int]] = {}
 
@@ -141,13 +153,20 @@ class PackmolInp:
         """
         元素記号で指定された packing 半径を Packmol の atom index 指定へ変換して書く。
 
-        Packmol の radius 指定は atom index に対して行うため、ここで XYZ ファイルを読んで
-        元素記号から atom index へ変換する。
+        Packmol の radius 指定は元素記号ではなく atom index に対して行う。
+        そのため、このメソッドでは次の変換を行う。
+
+        1. xyz_file を読み、元素記号ごとの atom index を調べる。
+        2. make_*.py 側の {"P": r_P, "O": r_O} を、Packmol の atoms 1 / atoms 2 3 4 5 へ変換する。
+        3. radius 行を書き出す。
+
+        ここで扱う radius は配置用の排除半径であり、分子ユニット内部の結合距離ではない。
         """
         atom_indices_by_symbol: Dict[str, List[int]] = self._make_atom_indices_by_symbol(
             xyz_file=xyz_file,
         )
 
+        # 元素記号ごとに、対応する atom index 群へ同じ radius を割り当てる。
         for atom_symbol in packing_radii_by_atom_symbol.keys():
             if atom_symbol not in atom_indices_by_symbol:
                 raise ValueError(
@@ -158,6 +177,10 @@ class PackmolInp:
             atom_indices: List[int] = atom_indices_by_symbol[atom_symbol]
             atom_indices_text: str = " ".join(str(atom_index) for atom_index in atom_indices)
             radius: float = packing_radii_by_atom_symbol[atom_symbol]
+            if radius <= 0.0:
+                raise ValueError(
+                    f"packing radius は正の値で指定する: {atom_symbol}, {radius}"
+                )
 
             # Packmol の atoms ブロックとして、同一元素記号に対応する atom index をまとめて出す。
             file_object.write(f"  atoms {atom_indices_text}\n")

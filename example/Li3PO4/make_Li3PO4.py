@@ -8,8 +8,10 @@ Li3PO4 の Packmol 初期構造を作るサンプルである。
 
 from packmol_util.model import StructureSpec
 from packmol_util.model import make_material_recipe
+from packmol_util.model import solve_packing_radii_from_pair_distances
 from packmol_util.model import write_single_atom_xyz
 from packmol_util.model import write_tetrahedral_unit_xyz
+
 from packmol_util.packmol import Packmol
 from packmol_util.packmol_inp import PackmolInp
 
@@ -48,9 +50,26 @@ def main() -> None:
     # packmol_inp.py が PO4.xyz を読み、P -> atoms 1、O -> atoms 2 3 4 5 へ変換する。
     # これは分子内の P-O 距離や O-O 距離を作る指定ではない。
     # ------------------------------------------------------------
-    po4_packing_radii_by_atom_symbol = {
-        "P": 0.25,
-        "O": 1.05,
+    # po4_packing_radii_by_atom_symbol = {
+    #     "P": 0.25,
+    #     "O": 1.05,
+    # }
+
+    # ------------------------------------------------------------
+    # 初期配置で目標にしたい元素ペアごとの最小距離である。
+    # Packmol はこの表を直接受け取れないため、下の
+    # solve_packing_radii_from_pair_distances() で元素ごとの packing radius へ近似変換する。
+    # ここでの P-O と O-O は、PO4 ユニット内部の P-O / O-O 距離ではない。
+    # Li 原子、PO4 ユニット、別 PO4 ユニットが互いに近づきすぎないようにする
+    # 配置時の目標距離である。
+    # ------------------------------------------------------------
+    minimum_distances_by_pair = {
+        ("Li", "Li"): 1.7,
+        ("Li", "P"): 2.0,
+        ("Li", "O"): 1.55,
+        ("P", "P"): 2.6,
+        ("P", "O"): 1.3,
+        ("O", "O"): 2.1,
     }
 
     # ------------------------------------------------------------
@@ -109,15 +128,54 @@ def main() -> None:
     # Li.xyz の StructureSpec は Li 原子を li_count 個配置する指定である。
     # PO4.xyz の StructureSpec は PO4 ユニットを po4_count 個配置する指定である。
     # ------------------------------------------------------------
+    # recipe = make_material_recipe(
+    #     symbols=symbols,
+    #     ratios=ratios,
+    #     structures=[
+    #         StructureSpec(xyz_file=li_xyz, number=li_count),
+    #         StructureSpec(
+    #             xyz_file=po4_xyz,
+    #             number=po4_count,
+    #             packing_radii_by_atom_symbol=po4_packing_radii_by_atom_symbol,
+    #         ),
+    #     ],
+    # )
+    # ------------------------------------------------------------
+    # 元素ペア距離表を、Packmol が扱える元素ごとの packing radius に変換する。
+    # 半径和モデルでは、すべての元素ペア距離を完全には再現できない場合がある。
+    # pair_distance_tolerance は、要求距離からどこまで短い側へ緩めてよいかを表す。
+    # これは Packmol 入力の tolerance ではない。
+    # ------------------------------------------------------------
+    pair_distance_tolerance: float = 1.10
+
+    packing_radii_by_atom_symbol = solve_packing_radii_from_pair_distances(
+        symbols=["Li", "P", "O"],
+        minimum_distances_by_pair=minimum_distances_by_pair,
+        pair_distance_tolerance=pair_distance_tolerance,
+    )
+
+    # ------------------------------------------------------------
+    # 変換された packing radius を、Li structure と PO4 structure へ割り当てる。
+    # Li.xyz には Li しか含まれないので Li の半径だけを渡す。
+    # PO4.xyz には P と O が含まれるので、P と O の半径を渡す。
+    # packmol_inp.py が各 XYZ を読んで、元素記号を atom index へ変換する。
+    # ------------------------------------------------------------
     recipe = make_material_recipe(
         symbols=symbols,
         ratios=ratios,
         structures=[
-            StructureSpec(xyz_file=li_xyz, number=li_count),
+            StructureSpec(
+                xyz_file=li_xyz,
+                number=li_count,
+                packing_radii_by_atom_symbol={"Li": packing_radii_by_atom_symbol["Li"]},
+            ),
             StructureSpec(
                 xyz_file=po4_xyz,
                 number=po4_count,
-                packing_radii_by_atom_symbol=po4_packing_radii_by_atom_symbol,
+                packing_radii_by_atom_symbol={
+                    "P": packing_radii_by_atom_symbol["P"],
+                    "O": packing_radii_by_atom_symbol["O"],
+                },
             ),
         ],
     )
