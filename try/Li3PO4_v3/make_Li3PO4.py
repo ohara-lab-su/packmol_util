@@ -10,12 +10,17 @@ from packmol_inp import PackmolInp
 
 def main() -> None:
     """
-    Li3PO4 の使用例。
+    Li3PO4 の使用例である。
     物質固有パラメーターはこのスクリプト内で与える。
     """
     formula_unit_count: int = 64
     number_density_A3: float = 0.0772877
-    p_o_distance: float = 1.54
+
+    p_o_distance: float = 1.30
+    o_o_distance: float = 2.10
+    po4_distance_tolerance: float = 0.05
+
+    minimum_separation_distance: float = 1.8
 
     li_xyz: str = "Li.xyz"
     po4_xyz: str = "PO4.xyz"
@@ -52,6 +57,8 @@ def main() -> None:
         center_element="P",
         vertex_element="O",
         center_vertex_distance=p_o_distance,
+        vertex_vertex_distance=o_o_distance,
+        distance_tolerance=po4_distance_tolerance,
     )
 
     recipe = make_material_recipe(
@@ -73,7 +80,7 @@ def main() -> None:
     )
 
     builder = PackmolInp(
-        minimum_separation_distance=1.8,
+        minimum_separation_distance=minimum_separation_distance,
         output_xyz=output_xyz,
         box_length=L,
         use_pbc=True,

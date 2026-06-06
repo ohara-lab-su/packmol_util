@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-材料非依存のテンプレート構造を準備する補助関数。
+材料非依存のテンプレート構造を準備する補助関数である。
 Packmol クラス本体へ材料専用処理を入れないために分離する。
 """
 
@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 @dataclass(frozen=True)
 class StructureSpec:
     """
-    Packmol に渡す 1 つの structure 情報。
+    Packmol に渡す 1 つの structure 情報である。
     """
 
     xyz_file: str
@@ -23,7 +23,7 @@ class StructureSpec:
 @dataclass(frozen=True)
 class MaterialRecipe:
     """
-    Packmol 入力準備情報。
+    Packmol 入力準備情報である。
     """
 
     total_atom_count: int
@@ -61,15 +61,60 @@ def write_single_atom_xyz(
     )
 
 
+def _validate_regular_tetrahedron_distances(
+    center_vertex_distance: float,
+    vertex_vertex_distance: float,
+    distance_tolerance: float,
+) -> None:
+    """
+    正四面体ユニットの中心-頂点距離と頂点-頂点距離の整合性を確認する。
+    """
+    if center_vertex_distance <= 0.0:
+        raise ValueError("center_vertex_distance は正の値で指定する。")
+
+    if vertex_vertex_distance <= 0.0:
+        raise ValueError("vertex_vertex_distance は正の値で指定する。")
+
+    if distance_tolerance < 0.0:
+        raise ValueError("distance_tolerance は 0 以上の値で指定する。")
+
+    expected_vertex_vertex_distance: float = center_vertex_distance * math.sqrt(8.0 / 3.0)
+    distance_error: float = abs(expected_vertex_vertex_distance - vertex_vertex_distance)
+
+    if distance_error > distance_tolerance:
+        message = (
+            "正四面体では center_vertex_distance と vertex_vertex_distance を "
+            "独立には指定できない。"
+            f" center_vertex_distance={center_vertex_distance:.10f},"
+            f" vertex_vertex_distance={vertex_vertex_distance:.10f},"
+            f" expected_vertex_vertex_distance={expected_vertex_vertex_distance:.10f},"
+            f" distance_error={distance_error:.10f},"
+            f" distance_tolerance={distance_tolerance:.10f}"
+        )
+        raise ValueError(message)
+
+
 def write_tetrahedral_unit_xyz(
     filename: str,
     center_element: str,
     vertex_element: str,
     center_vertex_distance: float,
+    vertex_vertex_distance: float,
+    distance_tolerance: float = 0.05,
 ) -> None:
     """
     中心原子 1 個と頂点原子 4 個からなる正四面体ユニットを書き出す。
+
+    center_vertex_distance は中心原子と頂点原子の距離である。
+    vertex_vertex_distance は頂点原子同士の距離である。
+    正四面体では両者は独立ではないため、指定値の整合性を確認する。
     """
+    _validate_regular_tetrahedron_distances(
+        center_vertex_distance=center_vertex_distance,
+        vertex_vertex_distance=vertex_vertex_distance,
+        distance_tolerance=distance_tolerance,
+    )
+
     scale: float = center_vertex_distance / math.sqrt(3.0)
     atoms: List[Tuple[str, float, float, float]] = [
         (center_element, 0.0, 0.0, 0.0),
