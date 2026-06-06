@@ -265,56 +265,115 @@ def _normalize_atom_pair(
 def solve_packing_radii_from_pair_distances(
     symbols: Sequence[str],
     minimum_distances_by_pair: Dict[Tuple[str, str], float],
-    distance_tolerance: float = 0.05,
+    pair_distance_tolerance: float = 0.0,
 ) -> Dict[str, float]:
     """
-    希望する元素ペア最小距離 d_ij が Packmol の半径和モデル
+    希望する pair distance を、その値以下で最大 pair_distance_tolerance だけ
+    緩めた範囲で、Packmol の半径和モデル r_i + r_j に落とす。
 
-        d_ij = r_i + r_j
-
-    で表現可能かを確認し、可能なら元素ごとの packing 半径を返す。
-    不可能なら ValueError を投げる。
+    minimum_distances_by_pair のキーは ("Li", "O") と ("O", "Li") のように
+    順不同でよいが、内部では正規化して扱う。
     """
     symbol_list: List[str] = list(symbols)
     if len(symbol_list) == 0:
         raise ValueError("symbols は 1 つ以上必要である。")
 
-    for distance in minimum_distances_by_pair.values():
+    if pair_distance_tolerance < 0.0:
+        raise ValueError("pair_distance_tolerance は 0 以上である必要がある。")
+
+    normalized_minimum_distances_by_pair: Dict[Tuple[str, str], float] = {}
+    for raw_pair_key, distance in minimum_distances_by_pair.items():
+        if len(raw_pair_key) != 2:
+            raise ValueError(f"pair key は 2 要素タプルで指定する: {raw_pair_key}")
+
+        atom_symbol_a, atom_symbol_b = raw_pair_key
+        normalized_pair_key = _normalize_atom_pair(atom_symbol_a, atom_symbol_b)
+
         if distance <= 0.0:
-            raise ValueError("最小距離は正の値である必要がある。")
+            raise ValueError(
+                f"元素ペア距離 {normalized_pair_key} は正の値である必要がある。"
+            )
 
-    diagonal_distances: Dict[str, float] = {}
-    for symbol in symbol_list:
-        key = _normalize_atom_pair(symbol, symbol)
-        if key not in minimum_distances_by_pair:
-            raise ValueError(f"自己ペア距離 {key} が指定されていない。")
-        diagonal_distances[symbol] = minimum_distances_by_pair[key]
+        normalized_minimum_distances_by_pair[normalized_pair_key] = distance
 
-    radii: Dict[str, float] = {}
-    for symbol in symbol_list:
-        radii[symbol] = diagonal_distances[symbol] / 2.0
-
-    for atom_symbol_a in symbol_list:
-        for atom_symbol_b in symbol_list:
+    pair_keys: List[Tuple[str, str]] = []
+    for i, atom_symbol_a in enumerate(symbol_list):
+        for atom_symbol_b in symbol_list[i:]:
             pair_key = _normalize_atom_pair(atom_symbol_a, atom_symbol_b)
-            if pair_key not in minimum_distances_by_pair:
+            if pair_key not in normalized_minimum_distances_by_pair:
                 raise ValueError(f"元素ペア距離 {pair_key} が指定されていない。")
+            pair_keys.append(pair_key)
 
-            target_distance: float = minimum_distances_by_pair[pair_key]
-            fitted_distance: float = radii[atom_symbol_a] + radii[atom_symbol_b]
-            error: float = abs(target_distance - fitted_distance)
+    best_radii: Optional[Dict[str, float]] = None
+    best_score: Optional[float] = None
 
-            if error > distance_tolerance:
-                raise ValueError(
-                    "指定された pair distance は Packmol の半径和モデルでは両立しない。"
-                    f" pair={pair_key},"
-                    f" target_distance={target_distance:.6f},"
-                    f" fitted_distance={fitted_distance:.6f},"
-                    f" error={error:.6f},"
-                    f" distance_tolerance={distance_tolerance:.6f}"
-                )
+    step_count: int = 40
 
-    return radii
+    diagonal_ranges: List[List[float]] = []
+    for symbol in symbol_list:
+        diagonal_key = _normalize_atom_pair(symbol, symbol)
+        requested_distance = normalized_minimum_distances_by_pair[diagonal_key]
+
+        values: List[float] = []
+        for step_index in range(step_count + 1):
+            reduction = pair_distance_tolerance * float(step_index) / float(step_count)
+            diagonal_distance = requested_distance - reduction
+            if diagonal_distance > 0.0:
+                values.append(diagonal_distance)
+
+        if len(values) == 0:
+            raise ValueError(
+                f"pair_distance_tolerance が大きすぎて自己ペア距離が非正になる: {diagonal_key}"
+            )
+
+        diagonal_ranges.append(values)
+
+    def _search(
+        depth: int,
+        current_diagonal_distances: Dict[str, float],
+    ) -> None:
+        nonlocal best_radii
+        nonlocal best_score
+
+        if depth == len(symbol_list):
+            radii: Dict[str, float] = {}
+            for symbol in symbol_list:
+                radii[symbol] = current_diagonal_distances[symbol] / 2.0
+
+            total_reduction: float = 0.0
+            for pair_key in pair_keys:
+                atom_symbol_a, atom_symbol_b = pair_key
+                requested_distance = normalized_minimum_distances_by_pair[pair_key]
+                effective_distance = radii[atom_symbol_a] + radii[atom_symbol_b]
+
+                if effective_distance > requested_distance:
+                    return
+
+                reduction = requested_distance - effective_distance
+                if reduction > pair_distance_tolerance:
+                    return
+
+                total_reduction += reduction
+
+            if best_score is None or total_reduction < best_score:
+                best_score = total_reduction
+                best_radii = dict(radii)
+            return
+
+        symbol = symbol_list[depth]
+        for diagonal_distance in diagonal_ranges[depth]:
+            current_diagonal_distances[symbol] = diagonal_distance
+            _search(depth + 1, current_diagonal_distances)
+
+    _search(depth=0, current_diagonal_distances={})
+
+    if best_radii is None:
+        raise ValueError(
+            "指定された pair distance は、許容した緩和幅の中では両立しない。"
+            f" pair_distance_tolerance={pair_distance_tolerance:.6f}"
+        )
+
+    return best_radii
 
 def _count_atoms_in_xyz_file(
     xyz_file: str,

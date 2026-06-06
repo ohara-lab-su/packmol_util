@@ -133,10 +133,17 @@ def main() -> None:
     #         ),
     #     ],
     # )
+    # packing_radii_by_atom_symbol = solve_packing_radii_from_pair_distances(
+    #     symbols=["Li", "P", "O"],
+    #     minimum_distances_by_pair=minimum_distances_by_pair,
+    #     distance_tolerance=0.05,
+    # )
+    pair_distance_tolerance: float = 1.10
+
     packing_radii_by_atom_symbol = solve_packing_radii_from_pair_distances(
         symbols=["Li", "P", "O"],
         minimum_distances_by_pair=minimum_distances_by_pair,
-        distance_tolerance=0.05,
+        pair_distance_tolerance=pair_distance_tolerance,
     )
 
     recipe = make_material_recipe(
