@@ -25,7 +25,13 @@ from x_logger import XLogger
 
 class Packmol:
     """
-    amorphous構造を作成するのに助けになるメソッドなど
+    Packmol 実行と、密度・セル長・POSCAR 変換をまとめる補助クラスである。
+
+    このクラスは分子ユニットの形を作らない。
+    PO4 のようなテンプレート形状は model.py が作る。
+
+    このクラスが担当するのは、密度からセル長を決めること、Packmol を実行すること、
+    Packmol が出力した XYZ を POSCAR へ変換することである。
     """
 
     def __init__(
@@ -54,8 +60,11 @@ class Packmol:
         ratios: Sequence[int],
     ) -> int:
         """
-        化学量論比1ユニットあたりの原子数を返す。
-        例: [80, 9, 11] -> 100
+        化学量論比 1 単位あたりの原子数を返す。
+
+        Fe80Si9B11 なら 80 + 9 + 11 = 100 である。
+        Li3PO4 なら 3 + 1 + 4 = 8 である。
+        この値は、組成比を保ったまま総原子数候補を列挙するときに使う。
         """
         self._logger.info("== get_unit_atom_count()")
         # ratios の和は、化学式 1 単位あたりの原子数に対応する。
@@ -69,10 +78,9 @@ class Packmol:
     def get_atomic_weight(
         element: str,
     ) -> float:
-        """汎用
-
-        元素記号から原子量を取得する。
-        """
+        """元素記号から原子量を取得する。"""
+        # 原子量表は param.py に置く。
+        # Packmol 自体は原子量や密度を扱わないため、セル長計算は Python 側で行う。
         return ATOMIC_WEIGHTS[element]
 
     def average_atomic_weight(
@@ -160,9 +168,13 @@ class Packmol:
         ratios: Sequence[int],
         total_atom_count: int,
     ) -> Dict[str, int]:
-        """汎用
-
+        """
         化学量論比と total_atom_count から各元素の原子数を決める。
+
+        total_atom_count が ratios の整数倍でない場合でも、端数の大きい元素へ
+        残りの原子を割り当て、総原子数が total_atom_count になるようにする。
+        厳密な組成比だけを許す用途では、make_atomic_mixture_recipe() のように
+        整数倍を要求する関数を使う。
         """
         self._logger.info("== compute_element_counts()")
         if len(symbols) != len(ratios):
@@ -251,7 +263,13 @@ class Packmol:
         output_log: Optional[str] = None,
         packmol_bin: Optional[str] = None,
     ) -> None:
-        """Packmol を実行する。"""
+        """
+        Packmol を実行する。
+
+        Packmol はコマンドライン引数で入力ファイル名を受け取るのではなく、
+        標準入力から .inp を読む使い方を前提にしている。
+        そのため、このメソッドでは input_file を stdin に接続する。
+        """
         self._logger.info("== run_packmol()")
         if input_file is None:
             input_file = self.input_file
@@ -287,7 +305,15 @@ class Packmol:
         comment: str = "packmol",
         elements: Optional[List[str]] = None,
     ) -> None:
-        """Packmol が出力した XYZ を VASP POSCAR へ変換する。"""
+        """
+        Packmol が出力した XYZ を VASP POSCAR へ変換する。
+
+        Packmol 出力は元素が混在した Cartesian XYZ である。
+        VASP POSCAR では元素ごとに座標をまとめ、Direct 座標で書くため、
+        ここで元素順に並べ替えてセル長で割る。
+
+        セル長は packmol.inp の inside box 行から読む。
+        """
         self._logger.info("== xyz_to_poscar()")
         if elements is None:
             raise ValueError("elements は指定してください。")

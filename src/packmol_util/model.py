@@ -232,6 +232,7 @@ def make_material_recipe(
         raise ValueError("symbols と ratios の長さが一致していません。")
 
     # Sequence のまま保持せず、後段で扱いやすい list に固定する。
+    # 以後の処理では何度も走査するため、Sequence を list に固定する。
     symbol_list: List[str] = list(symbols)
     ratio_list: List[int] = list(ratios)
     structure_list: List[StructureSpec] = list(structures)
@@ -257,6 +258,14 @@ def _normalize_atom_pair(
     atom_symbol_a: str,
     atom_symbol_b: str,
 ) -> Tuple[str, str]:
+    """
+    元素ペアを順序非依存のキーに正規化する。
+
+    Li-P と P-Li は同じ pair distance を表すため、辞書キーを常に同じ順序へそろえる。
+    ここでは文字列順を使うだけであり、元素の物理的な大小関係を意味しない。
+    """
+    # pair distance は元素ペアの順序に意味を持たない。
+    # そのため、入力が ("Li", "O") でも ("O", "Li") でも同じキーへ落とす。
     if atom_symbol_a <= atom_symbol_b:
         return atom_symbol_a, atom_symbol_b
     return atom_symbol_b, atom_symbol_a
@@ -268,11 +277,26 @@ def solve_packing_radii_from_pair_distances(
     pair_distance_tolerance: float = 0.0,
 ) -> Dict[str, float]:
     """
-    希望する pair distance を、その値以下で最大 pair_distance_tolerance だけ
-    緩めた範囲で、Packmol の半径和モデル r_i + r_j に落とす。
+    希望する元素ペア距離を Packmol の原子半径モデルへ近似変換する。
 
-    minimum_distances_by_pair のキーは ("Li", "O") と ("O", "Li") のように
-    順不同でよいが、内部では正規化して扱う。
+    Packmol は Li-O=1.55, P-O=1.30 のような元素ペア距離表を直接受け取らない。
+    Packmol が受け取れるのは atom index ごとの radius であり、実効距離は
+    radius_i + radius_j として扱われる。
+
+    この関数は、make_*.py 側で書いた元素ペア距離表を、Packmol に渡せる
+    元素ごとの packing radius に変換するための補助関数である。
+
+    ただし、任意の元素ペア距離表が半径和で完全に表せるわけではない。
+    例えば Li-Li, Li-P, Li-O, P-P, P-O, O-O をすべて独立に与えると、
+    半径和モデルでは矛盾する場合がある。
+
+    pair_distance_tolerance は、その矛盾をどの程度まで短い距離側へ緩めて許すかを表す。
+    この値は Packmol の tolerance ではない。元素ペア距離表を packing radius に
+    近似変換するための内部的な許容幅である。
+
+    戻り値は {"Li": r_Li, "P": r_P, "O": r_O} のような辞書である。
+    この辞書は StructureSpec.packing_radii_by_atom_symbol に渡し、
+    packmol_inp.py 側で atom index 指定へ変換される。
     """
     symbol_list: List[str] = list(symbols)
     if len(symbol_list) == 0:
@@ -281,6 +305,8 @@ def solve_packing_radii_from_pair_distances(
     if pair_distance_tolerance < 0.0:
         raise ValueError("pair_distance_tolerance は 0 以上である必要がある。")
 
+    # 入力された pair distance 辞書を、順序非依存の正規化キーで作り直す。
+    # これにより ("Li", "O") と ("O", "Li") を同じ指定として扱う。
     normalized_minimum_distances_by_pair: Dict[Tuple[str, str], float] = {}
     for raw_pair_key, distance in minimum_distances_by_pair.items():
         if len(raw_pair_key) != 2:
@@ -296,6 +322,8 @@ def solve_packing_radii_from_pair_distances(
 
         normalized_minimum_distances_by_pair[normalized_pair_key] = distance
 
+    # 半径和モデルで確認すべき全ペアを作る。
+    # symbols=[Li, P, O] なら Li-Li, Li-P, Li-O, P-P, P-O, O-O を確認する。
     pair_keys: List[Tuple[str, str]] = []
     for i, atom_symbol_a in enumerate(symbol_list):
         for atom_symbol_b in symbol_list[i:]:
@@ -304,11 +332,17 @@ def solve_packing_radii_from_pair_distances(
                 raise ValueError(f"元素ペア距離 {pair_key} が指定されていない。")
             pair_keys.append(pair_key)
 
+    # best_radii は、半径和で全ペア条件を満たす候補のうち、
+    # 元の pair distance からの総短縮量が最も小さいものを保持する。
     best_radii: Optional[Dict[str, float]] = None
     best_score: Optional[float] = None
 
+    # 自己ペア距離 Li-Li, P-P, O-O を少しずつ短くしながら候補を探索する。
+    # 完全な連続最適化ではなく、サンプル用の離散探索である。
     step_count: int = 40
 
+    # 各元素について、自己ペア距離をどこまで緩めるかの候補リストを作る。
+    # 自己ペア距離 d_ii が決まれば、その元素の packing radius は d_ii / 2 になる。
     diagonal_ranges: List[List[float]] = []
     for symbol in symbol_list:
         diagonal_key = _normalize_atom_pair(symbol, symbol)
@@ -336,6 +370,7 @@ def solve_packing_radii_from_pair_distances(
         nonlocal best_score
 
         if depth == len(symbol_list):
+            # すべての自己ペア距離候補が決まったので、元素ごとの半径へ変換する。
             radii: Dict[str, float] = {}
             for symbol in symbol_list:
                 radii[symbol] = current_diagonal_distances[symbol] / 2.0
@@ -346,9 +381,13 @@ def solve_packing_radii_from_pair_distances(
                 requested_distance = normalized_minimum_distances_by_pair[pair_key]
                 effective_distance = radii[atom_symbol_a] + radii[atom_symbol_b]
 
+                # 半径和が要求距離より大きい場合は、Packmol の排除距離が強すぎる。
+                # ここでは「指定値以下に緩める」方針なので、この候補は棄却する。
                 if effective_distance > requested_distance:
                     return
 
+                # 半径和が要求距離より短い場合、その短縮量を評価する。
+                # 短縮量が pair_distance_tolerance を超える候補は棄却する。
                 reduction = requested_distance - effective_distance
                 if reduction > pair_distance_tolerance:
                     return
@@ -360,6 +399,7 @@ def solve_packing_radii_from_pair_distances(
                 best_radii = dict(radii)
             return
 
+        # 次の元素について、許された自己ペア距離候補を順に試す。
         symbol = symbol_list[depth]
         for diagonal_distance in diagonal_ranges[depth]:
             current_diagonal_distances[symbol] = diagonal_distance

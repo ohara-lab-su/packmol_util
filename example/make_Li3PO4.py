@@ -55,7 +55,14 @@ def main() -> None:
     #     "O": 1.05,
     # }
 
-    # radii + tolerance から擬似的に atom <--> atom 距離を作る
+    # ------------------------------------------------------------
+    # 初期配置で目標にしたい元素ペアごとの最小距離である。
+    # Packmol はこの表を直接受け取れないため、下の
+    # solve_packing_radii_from_pair_distances() で元素ごとの packing radius へ近似変換する。
+    # ここでの P-O と O-O は、PO4 ユニット内部の P-O / O-O 距離ではない。
+    # Li 原子、PO4 ユニット、別 PO4 ユニットが互いに近づきすぎないようにする
+    # 配置時の目標距離である。
+    # ------------------------------------------------------------
     minimum_distances_by_pair = {
         ("Li", "Li"): 1.7,
         ("Li", "P"): 2.0,
@@ -133,11 +140,12 @@ def main() -> None:
     #         ),
     #     ],
     # )
-    # packing_radii_by_atom_symbol = solve_packing_radii_from_pair_distances(
-    #     symbols=["Li", "P", "O"],
-    #     minimum_distances_by_pair=minimum_distances_by_pair,
-    #     distance_tolerance=0.05,
-    # )
+    # ------------------------------------------------------------
+    # 元素ペア距離表を、Packmol が扱える元素ごとの packing radius に変換する。
+    # 半径和モデルでは、すべての元素ペア距離を完全には再現できない場合がある。
+    # pair_distance_tolerance は、要求距離からどこまで短い側へ緩めてよいかを表す。
+    # これは Packmol 入力の tolerance ではない。
+    # ------------------------------------------------------------
     pair_distance_tolerance: float = 1.10
 
     packing_radii_by_atom_symbol = solve_packing_radii_from_pair_distances(
@@ -146,6 +154,12 @@ def main() -> None:
         pair_distance_tolerance=pair_distance_tolerance,
     )
 
+    # ------------------------------------------------------------
+    # 変換された packing radius を、Li structure と PO4 structure へ割り当てる。
+    # Li.xyz には Li しか含まれないので Li の半径だけを渡す。
+    # PO4.xyz には P と O が含まれるので、P と O の半径を渡す。
+    # packmol_inp.py が各 XYZ を読んで、元素記号を atom index へ変換する。
+    # ------------------------------------------------------------
     recipe = make_material_recipe(
         symbols=symbols,
         ratios=ratios,

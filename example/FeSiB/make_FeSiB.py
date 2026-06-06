@@ -86,6 +86,9 @@ def main() -> None:
         box_length=box_length,
     )
     for structure in recipe.structures:
+        # make_atomic_mixture_recipe() が作った Fe.xyz / Si.xyz / B.xyz の各 structure を、
+        # Packmol 入力の structure ブロックとして登録する。
+        # FeSiB では単原子テンプレートだけなので、packing_radii_by_atom_symbol は None のままである。
         builder.add_structure(
             xyz_file=structure.xyz_file,
             number=structure.number,
