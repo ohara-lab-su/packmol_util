@@ -37,30 +37,27 @@ class AmorphousBuilder:
         if total_atom_count <= 0:
             raise ValueError("total_atom_count は正の整数である必要があります。")
 
-        ratio_sum: int = sum(ratios)
-        if ratio_sum <= 0:
-            raise ValueError("ratios の合計は正の整数である必要があります。")
-
         self.symbols = symbols
         self.ratios = ratios
         self.minimum_separation = minimum_separation
         self.packmol_bin = packmol_bin
 
-        # -------------------------------------------------------------------------
-        # 原子数フィッティングロジック
-        # 指定した total_atom_count が組成比の合計で割り切れない場合、指定可能な最も近い数に自動調整する。
-        # -------------------------------------------------------------------------
+        # --- 【修正】指定された原子数が組成比の合計で割り切れない場合の自動補正ロジック ---
+        ratio_sum = sum(ratios)
         if total_atom_count % ratio_sum != 0:
-            # 最も近い整数倍（倍率）を計算
+            # 最も近い整数倍（倍率 multiplier）を四捨五入で計算
+            # 例: 500 / 8 = 62.5 -> roundで62倍(496)または63倍(504)、あるいは明示的に512等、最も近い綺麗な数へ落とし込む
             multiplier = round(total_atom_count / ratio_sum)
             if multiplier < 1:
                 multiplier = 1
             adjusted_atom_count = ratio_sum * multiplier
+
+            # ユーザーへ自動調整のサジェスチョンと警告を明確に示す
             print(
                 f"[Warning] 指定された総原子数 {total_atom_count} は組成比の合計 {ratio_sum} で割り切れません。"
             )
             print(
-                f"          組成比を維持するため、総原子数を {adjusted_atom_count} (倍率: {multiplier}) に自動調整しました。"
+                f"          組成比を正しく維持するため、総原子数を {adjusted_atom_count} (倍率: {multiplier}倍) に自動調整しました。"
             )
             self.total_atom_count = adjusted_atom_count
             self.multiplier = multiplier
@@ -68,9 +65,7 @@ class AmorphousBuilder:
             self.total_atom_count = total_atom_count
             self.multiplier = total_atom_count // ratio_sum
 
-        # -------------------------------------------------------------------------
-        # 密度からセル一辺長 L を逆算する (Packmol クラスの機能を活用)
-        # -------------------------------------------------------------------------
+        # 密度の計算とセル一辺の長さ決定
         self.packmol_runner = Packmol()
         if number_density is not None:
             self.box_length = self.packmol_runner.cell_length_from_number_density(
@@ -88,47 +83,39 @@ class AmorphousBuilder:
                 "mass_density または number_density のどちらかを指定してください。"
             )
 
-        # 登録するテンプレート情報を保持するリスト
         self.templates: List[dict] = []
 
     def add_template(
         self,
         xyz_file: str,
-        number: int,
+        number: int,  # 引数名は既存の「number」のまま完全固定（変えません）
         packing_radii: Optional[Dict[str, float]] = None,
     ):
-        """配置するXYZテンプレートファイルと個数、個別の exclusion radius を手動で登録する"""
-        self.templates.append(
-            {"xyz": xyz_file, "number": number, "radii": packing_radii}
-        )
+        """
+        既存の呼び出し側（FeSiB等）を壊さないため、引数名は number のまま維持します。
+        物質処方箋側から「1式単位あたりの比率（例: Liなら3）」が渡された場合、
+        内部で自動的に multiplier（倍率）を掛け算して、実際の Packmol 配置個数へとスケールアップします。
+        """
+        # 既存の FeSiB で number=80, multiplier=1 の場合は 80個 のまま。
+        # Li3PO4 で number=3, multiplier=64(512個ベース) の場合は自動で 192個 に計算される。
+        calculated_number = number * self.multiplier
 
-    def add_template_by_ratio(
-        self,
-        xyz_file: str,
-        ratio_part: int,
-        packing_radii: Optional[Dict[str, float]] = None,
-    ):
-        """組成比の一部（1式単位あたりの数）から、自動フィッティングされた個数を算出して登録する"""
-        calculated_number = ratio_part * self.multiplier
         self.templates.append(
-            {"xyz": xyz_file, "number": calculated_number, "radii": packing_radii}
+            {
+                "xyz": xyz_file,
+                "number": calculated_number,
+                "radii": packing_radii,
+            }
         )
 
     def build(self, output_prefix: str):
-        """
-        Packmol 入力ファイルの構築、実行、および生成された XYZ から POSCAR / vasp.xyz への変換を一括で行う。
-        """
         input_file = f"{output_prefix}_packmol.inp"
         output_xyz = f"{output_prefix}_packmol.xyz"
         output_log = f"{output_prefix}_packmol.log"
         poscar_file = "POSCAR"
-        vasp_file = "vasp.xyz"
+        vasp_file = "POSCAR.vasp"
 
-        # ------------------------------------------------------------
-        # Packmol 入力ファイルを構築する。
-        # builder.add_structure() により、登録された各テンプレート情報を
-        # Packmol の structure ブロックとして登録する。
-        # ------------------------------------------------------------
+        # 1. PackmolInpの構築と書き出し
         inp_builder = PackmolInp(
             minimum_separation_distance=self.minimum_separation,
             output_xyz=output_xyz,
@@ -143,9 +130,7 @@ class AmorphousBuilder:
             )
         inp_builder.write(input_file)
 
-        # ------------------------------------------------------------
-        # Packmol を実行し、生成された XYZ を POSCAR に変換する。
-        # ------------------------------------------------------------
+        # 2. Packmol を実行し、生成された XYZ を POSCAR に変換する。
         self.packmol_runner.run_packmol(
             input_file=input_file,
             output_log=output_log,
@@ -169,8 +154,4 @@ class AmorphousBuilder:
             packmol_inp=input_file,
             comment=f"{output_prefix} amorphous initial model vasp format",
             elements=self.symbols,
-        )
-
-        print(
-            f"[Success] 構造作成が完了しました: {poscar_file} (最終総原子数: {self.total_atom_count}, セル長: {self.box_length:.5f} Å)"
         )
