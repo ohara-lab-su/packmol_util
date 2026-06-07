@@ -161,3 +161,6 @@ class AmorphousBuilder:
             comment=f"{output_prefix} amorphous initial model vasp format",
             elements=self.symbols,
         )
+
+
+#
