@@ -36,8 +36,14 @@ def main() -> None:
 
     # ------------------------------------------------------------
     # 【ユニットベースのデータ定義】
-    # この系を構成する「ユニット」のトポロジー、内包ファイル、比率を完全明示する。
-    # 1つのユニットに1原子が含まれるため、packing_radii（局所排除半径）は不要（None）となる。
+    # この系を構成する「ユニット」のテンプレートファイルと比率を明示する。
+    #
+    # FeSiB では、各ユニットは 1 原子だけを含む Fe.xyz / Si.xyz / B.xyz である。
+    # unit_ratio は Fe80Si9B11 の組成比そのものであり、builder.multiplier を掛けることで
+    # Packmol に渡す実際の配置個数になる。
+    #
+    # radii は、必要な場合にだけ Packmol 配置用の元素記号別 packing 半径を与える欄である。
+    # このサンプルでは全体の minimum_separation_distance だけを使うため None とする。
     # ------------------------------------------------------------
     fe_si_b_units = {
         "Fe": {"xyz": "Fe.xyz", "unit_ratio": 80, "radii": None},
@@ -68,7 +74,7 @@ def main() -> None:
         ratios=ratios,
         mass_density=mass_density_g_cm3,  # 質量密度 [g/cm^3] での指定
         total_atom_count=total_atom_count,  # 希望するベースの総原子数
-        minimum_separation=minimum_separation_distance,  # 全体的な許容近接距離
+        minimum_separation=minimum_separation_distance,  # 配置時の全体的な近接回避距離
     )
 
     # ============================================================
@@ -81,7 +87,8 @@ def main() -> None:
     # メソッド引数の説明：
     #   xyz_file: Packmol に渡す1個の単原子テンプレートの座標ファイル名 (.xyz)
     #   number: そのテンプレートを Packmol がセル内に何個配置するかを表す実際の複製個数
-    #   packing_radii: 元素ごとの局所排除半径（単原子系は None）
+    #   packing_radii: Packmol 配置時に使う元素記号別の排除半径である。
+    #                  FeSiB サンプルでは全体条件だけを使うため None とする。
     # ============================================================
     for unit_name, cfg in fe_si_b_units.items():
         calculated_number = cfg["unit_ratio"] * builder.multiplier

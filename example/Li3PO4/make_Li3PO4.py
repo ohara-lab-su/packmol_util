@@ -40,9 +40,20 @@ def main() -> None:
 
     # ------------------------------------------------------------
     # 【ユニットベースのデータ定義】
-    # この系を構成する「Li」と「PO4」の2大ユニットを完全定義する。
-    # PO4分子ユニットは、内部の分子形状が崩れるのを防ぐため、
-    # 中心原子(P)と頂点原子(O)に対して個別の局所排除半径（packing_radii）を明示的に指定する。
+    # この系を構成する「Li」と「PO4」の2大ユニットを定義する。
+    #
+    # xyz は、Packmol に渡す 1 個のユニットテンプレートである。
+    # Li.xyz は 1 原子だけを含む単原子ユニットであり、PO4.xyz は P 原子 1 個と O 原子 4 個を含む
+    # 分子ユニットである。PO4.xyz の内部幾何は、後段の write_tetrahedral_unit_xyz() で作る。
+    #
+    # unit_ratio は、1 式単位 Li3PO4 あたりに配置するユニット数である。
+    # Li は 3 個、PO4 は 1 個であり、PO4 ユニット 1 個の内部に P:1, O:4 が含まれる。
+    #
+    # radii は Packmol の配置時に使う元素記号別の packing 半径である。
+    # これは PO4 内部の P-O 距離や O-O 距離を作る値ではない。
+    # PO4 内部距離は p_o_distance と o_o_distance で指定し、XYZ 座標として固定する。
+    # radii は、作成済みの PO4 ユニットや Li 原子をセル内に配置するとき、他ユニット・他原子との
+    # 重なりを避けるための排除半径である。
     # ------------------------------------------------------------
     li3po4_units = {
         "Li": {"xyz": "Li.xyz", "unit_ratio": 3, "radii": None},
@@ -62,7 +73,10 @@ def main() -> None:
     p_o_distance: float = 1.30
     o_o_distance: float = 2.10
 
-    # 異なるユニット同士（Li と O、あるいは別々の PO4 ユニット同士）が近づきすぎないための全体条件
+    # Packmol 配置時の全体的な近接回避距離である。
+    # この値は PO4 内部の P-O 距離や O-O 距離ではない。
+    # p_o_distance / o_o_distance は分子ユニット内部の幾何を決める値であり、
+    # minimum_separation_distance は、Li ユニットや PO4 ユニット同士を箱の中に置くときの全体条件である。
     minimum_separation_distance: float = 1.8
 
     # ============================================================
@@ -104,8 +118,9 @@ def main() -> None:
     #   xyz_file: Packmol に渡す単原子または分子ユニットテンプレートの座標ファイル名 (.xyz)
     #   number: そのテンプレートを Packmol がセル内に何個配置するかを表す実際の複製個数
     #           (Li は 3 * 64 = 192 個、PO4 は 1 * 64 = 64 個となる)
-    #   packing_radii: 元素固有の packing 半径を指定する辞書。
-    #                  PO4 では分子内パッキングを制御するために用いる。
+    #   packing_radii: Packmol 配置時に使う元素記号別の排除半径である。
+    #                  PO4 の内部構造を作る値ではない。
+    #                  P-O / O-O の分子内距離は write_tetrahedral_unit_xyz() で生成済みの PO4.xyz に含まれる。
     # ============================================================
     for unit_name, cfg in li3po4_units.items():
         calculated_number = cfg["unit_ratio"] * builder.multiplier

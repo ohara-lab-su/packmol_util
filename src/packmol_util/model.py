@@ -297,6 +297,10 @@ def solve_packing_radii_from_pair_distances(
     戻り値は {"Li": r_Li, "P": r_P, "O": r_O} のような辞書である。
     この辞書は StructureSpec.packing_radii_by_atom_symbol に渡し、
     packmol_inp.py 側で atom index 指定へ変換される。
+
+    注意：この変換で得られる半径は、分子ユニット内部の距離を決めるものではない。
+    例えば PO4 の P-O / O-O 距離は write_tetrahedral_unit_xyz() が作る XYZ 座標で決まる。
+    この関数が扱うのは、Packmol が複数ユニットを配置するときに使う半径和モデルである。
     """
     symbol_list: List[str] = list(symbols)
     if len(symbol_list) == 0:
@@ -338,6 +342,7 @@ def solve_packing_radii_from_pair_distances(
     best_score: Optional[float] = None
 
     # 自己ペア距離 Li-Li, P-P, O-O を少しずつ短くしながら候補を探索する。
+    # 自己ペア距離を決めると r_Li, r_P, r_O が決まり、そこから Li-P などの異種ペア距離も決まる。
     # 完全な連続最適化ではなく、サンプル用の離散探索である。
     step_count: int = 40
 
