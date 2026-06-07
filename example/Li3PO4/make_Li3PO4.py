@@ -18,7 +18,9 @@ def main() -> None:
         filename="PO4.xyz",
         center_element="P",
         vertex_element="O",
+        # 中心原子—頂点原子の距離
         center_vertex_distance=1.30,
+        # 頂点原子—頂点原子の距離 (理想的な四面体では 2.123 くらい)
         vertex_vertex_distance=2.10,
     )
 
