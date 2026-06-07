@@ -59,6 +59,7 @@ class PackmolInp:
         packing_radii_by_atom_symbol は、必要な場合だけ指定する配置用の排除半径である。
         これは分子内距離ではない。例えば PO4 の P-O 距離や O-O 距離は、PO4.xyz を
         作る段階で決まる。
+        ここで与える半径は、Packmol が複数の structure を箱の中へ置くときの重なり回避に使う。
         """
         # ここではまだ Packmol 入力ファイルには書かない。
         # write() が呼ばれた時点で、登録済み block を順に structure ... end structure へ変換する。

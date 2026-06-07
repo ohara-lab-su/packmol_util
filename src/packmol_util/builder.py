@@ -105,8 +105,12 @@ class AmorphousBuilder:
         引数の説明：
             xyz_file: Packmol に渡す単原子または分子ユニットテンプレートの座標ファイル名 (.xyz)
             number: そのテンプレートを何個複製して配置するかを指定する [int]
-            packing_radii: 元素記号で指定された局所排除半径の辞書。分子内パッキング制御等に使用（任意）
+            packing_radii: Packmol 配置時に使う元素記号別の排除半径の辞書（任意）。
+                           分子ユニット内部の結合距離や形状を作る値ではない。
         """
+        # builder では、テンプレートをまだ Packmol 入力へ変換しない。
+        # ここでは「どの XYZ テンプレートを何個置くか」と、必要なら配置用 packing 半径だけを保存する。
+        # 具体的な structure ... end structure への変換は build() 内の PackmolInp が担当する。
         self.templates.append(
             {
                 "xyz": xyz_file,
@@ -116,13 +120,17 @@ class AmorphousBuilder:
         )
 
     def build(self, output_prefix: str):
+        # output_prefix は、一連の生成ファイル名の接頭辞として使う。
+        # 例: output_prefix="Li3PO4" の場合、Li3PO4_packmol.inp / Li3PO4_packmol.xyz / Li3PO4_packmol.log を作る。
         input_file = f"{output_prefix}_packmol.inp"
         output_xyz = f"{output_prefix}_packmol.xyz"
         output_log = f"{output_prefix}_packmol.log"
         poscar_file = "POSCAR"
         vasp_file = "POSCAR.vasp"
 
-        # 1. PackmolInpの構築と書き出し
+        # 1. PackmolInp を構築する。
+        # AmorphousBuilder が持つ情報は Python 側の抽象表現である。
+        # PackmolInp は、それを Packmol の .inp 文法へ落とす役割を持つ。
         inp_builder = PackmolInp(
             minimum_separation_distance=self.minimum_separation,
             output_xyz=output_xyz,
@@ -130,11 +138,14 @@ class AmorphousBuilder:
             use_pbc=True,
         )
         for t in self.templates:
+            # 1 件の template は Packmol 入力の 1 つの structure ブロックに対応する。
+            # 単原子テンプレートでも PO4 のような分子ユニットでも、ここでは同じ登録処理を通す。
             inp_builder.add_structure(
                 xyz_file=t["xyz"],
                 number=t["number"],
                 packing_radii_by_atom_symbol=t["radii"],
             )
+        # 登録した template 群を Packmol 入力ファイルとして書き出す。
         inp_builder.write(input_file)
 
         # 2. Packmol を実行し、生成された XYZ を POSCAR に変換する。
