@@ -12,6 +12,8 @@ packmol_util/builder.py
 
 【重要】指定した total_atom_count が ratios の合計で割り切れない（組成比を維持できない）場合、
 プログラムが破綻するのを防ぐため、指定された原子数に最も近い「割り切れる総原子数」へ自動補正を行う。
+内部で計算された全体のスケール倍率（multiplier）を外部に公開（プロパティ化）することで、
+利用側のスクリプトがユニット構成単位でのパッキング個数を一元管理できるように設計されている。
 """
 
 from typing import Dict, List, Optional
@@ -42,28 +44,25 @@ class AmorphousBuilder:
         self.minimum_separation = minimum_separation
         self.packmol_bin = packmol_bin
 
-        # --- 【修正】指定された原子数が組成比の合計で割り切れない場合の自動補正ロジック ---
+        # --- 【自動補正ロジック】指定できない比率（割り切れない数）のときの自動補正 ---
         ratio_sum = sum(ratios)
         if total_atom_count % ratio_sum != 0:
-            # 最も近い整数倍（倍率 multiplier）を四捨五入で計算
-            # 例: 500 / 8 = 62.5 -> roundで62倍(496)または63倍(504)、あるいは明示的に512等、最も近い綺麗な数へ落とし込む
+            # 最も近い整数倍（倍率）を計算
             multiplier = round(total_atom_count / ratio_sum)
             if multiplier < 1:
                 multiplier = 1
             adjusted_atom_count = ratio_sum * multiplier
-
-            # ユーザーへ自動調整のサジェスチョンと警告を明確に示す
             print(
                 f"[Warning] 指定された総原子数 {total_atom_count} は組成比の合計 {ratio_sum} で割り切れません。"
             )
             print(
-                f"          組成比を正しく維持するため、総原子数を {adjusted_atom_count} (倍率: {multiplier}倍) に自動調整しました。"
+                f"          組成比を維持するため、総原子数を {adjusted_atom_count} (倍率: {multiplier}) に自動調整しました。"
             )
             self.total_atom_count = adjusted_atom_count
-            self.multiplier = multiplier
+            self._multiplier = multiplier
         else:
             self.total_atom_count = total_atom_count
-            self.multiplier = total_atom_count // ratio_sum
+            self._multiplier = total_atom_count // ratio_sum
 
         # 密度の計算とセル一辺の長さ決定
         self.packmol_runner = Packmol()
@@ -85,25 +84,33 @@ class AmorphousBuilder:
 
         self.templates: List[dict] = []
 
+    @property
+    def multiplier(self) -> int:
+        """
+        全体の化学量論比に対するセルのスケール倍率を返す。
+        利用側のスクリプトは、この倍率をユニットの1式あたり構成比に乗算することで、
+        Packmol に引き渡すべき実際の複製個数（number）を算出する。
+        """
+        return self._multiplier
+
     def add_template(
         self,
         xyz_file: str,
-        number: int,  # 引数名は既存の「number」のまま完全固定（変えません）
+        number: int,  # そのテンプレートを Packmol がセル内に何個配置するかを表す実際の複製個数
         packing_radii: Optional[Dict[str, float]] = None,
     ):
         """
-        既存の呼び出し側（FeSiB等）を壊さないため、引数名は number のまま維持します。
-        物質処方箋側から「1式単位あたりの比率（例: Liなら3）」が渡された場合、
-        内部で自動的に multiplier（倍率）を掛け算して、実際の Packmol 配置個数へとスケールアップします。
-        """
-        # 既存の FeSiB で number=80, multiplier=1 の場合は 80個 のまま。
-        # Li3PO4 で number=3, multiplier=64(512個ベース) の場合は自動で 192個 に計算される。
-        calculated_number = number * self.multiplier
+        Packmol の 1 つの structure ブロックに対応するテンプレート情報を登録する。
 
+        引数の説明：
+            xyz_file: Packmol に渡す単原子または分子ユニットテンプレートの座標ファイル名 (.xyz)
+            number: そのテンプレートを何個複製して配置するかを指定する [int]
+            packing_radii: 元素記号で指定された局所排除半径の辞書。分子内パッキング制御等に使用（任意）
+        """
         self.templates.append(
             {
                 "xyz": xyz_file,
-                "number": calculated_number,
+                "number": number,
                 "radii": packing_radii,
             }
         )
@@ -138,7 +145,6 @@ class AmorphousBuilder:
         )
 
         # Packmol 出力は Cartesian 座標なので、VASP POSCAR 用に Direct 座標へ変換する。
-        # 元素順序は指定された symbols に従う。
         self.packmol_runner.xyz_to_poscar(
             xyz_file=output_xyz,
             poscar_file=poscar_file,
@@ -147,7 +153,7 @@ class AmorphousBuilder:
             elements=self.symbols,
         )
 
-        # 外部ツール連携用に vasp.xyz も同様に出力する。
+        # 外部ツール連携用に vasp.xyz（あるいは POSCAR.vasp）も同様に出力する。
         self.packmol_runner.xyz_to_poscar(
             xyz_file=output_xyz,
             poscar_file=vasp_file,
