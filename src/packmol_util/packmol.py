@@ -74,7 +74,6 @@ class Packmol:
             total = total + value
         return total
 
-
     def count_atoms_in_xyz(
         self,
         xyz_file: str,
@@ -306,10 +305,10 @@ class Packmol:
             )
 
         if result.returncode != 0:
-            print(
-                f"Packmol の終了ステータスが 0 ではありません (code={result.returncode})"
+            raise RuntimeError(
+                "Packmol の実行に失敗した。"
+                f" returncode={result.returncode}, log={output_log}"
             )
-            print(f"詳細はログ {output_log} を確認してください。")
 
     def xyz_to_poscar(
         self,
@@ -406,7 +405,6 @@ class Packmol:
 
         return xyz_to_poscar_index
 
-
     def write_fnc_file(
         self,
         fnc_file: str,
@@ -453,7 +451,9 @@ class Packmol:
             if atom_i == atom_j:
                 raise ValueError(f"FNC ペアに同一原子が指定されている: {atom_i}")
             if constraint_type not in distance_ranges_by_type:
-                raise ValueError(f"未定義の FNC constraint type である: {constraint_type}")
+                raise ValueError(
+                    f"未定義の FNC constraint type である: {constraint_type}"
+                )
 
             neighbours_by_atom[atom_i].append((atom_j, constraint_type))
             neighbours_by_atom[atom_j].append((atom_i, constraint_type))
@@ -463,8 +463,20 @@ class Packmol:
             f.write("\n")
             f.write(" No. of possible rmin-rmax pairs:\n")
             f.write(f" {len(sorted_type_indices)}\n")
-            f.write(" " + " ".join(f"{distance_ranges_by_type[t][0]:.8f}" for t in sorted_type_indices) + "\n")
-            f.write(" " + " ".join(f"{distance_ranges_by_type[t][1]:.8f}" for t in sorted_type_indices) + "\n")
+            f.write(
+                " "
+                + " ".join(
+                    f"{distance_ranges_by_type[t][0]:.8f}" for t in sorted_type_indices
+                )
+                + "\n"
+            )
+            f.write(
+                " "
+                + " ".join(
+                    f"{distance_ranges_by_type[t][1]:.8f}" for t in sorted_type_indices
+                )
+                + "\n"
+            )
             f.write("\n")
             f.write(f" {total_atom_count}\n")
             f.write("\n")
