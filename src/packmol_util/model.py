@@ -53,6 +53,21 @@ class StructureSpec:
 
 
 @dataclass(frozen=True)
+class TetrahedralUnitFncSpec:
+    """
+    正四面体ユニットの FNC 指定と Packmol 用代表距離をまとめた仕様である。
+
+    FNC の rmin/rmax を一次情報とし、その中央値から Packmol に渡す
+    テンプレート構造用の代表距離を派生させる。
+    """
+
+    center_vertex_distance: float
+    vertex_vertex_distance: float
+    fnc_pairs_in_template: List[Tuple[int, int, int]]
+    fnc_distance_ranges: Dict[int, Tuple[float, float]]
+
+
+@dataclass(frozen=True)
 class MaterialRecipe:
     """
     make_*.py 側で定義した構造作成条件を Packmol 入力生成へ渡すためのレシピである。
@@ -501,3 +516,106 @@ def make_atomic_mixture_recipe(
         ratios=list(ratios),
         structures=structures,
     )
+
+
+def make_tetrahedral_unit_fnc_pairs(
+    center_index: int = 1,
+    vertex_indices: Optional[Sequence[int]] = None,
+    center_vertex_constraint_type: int = 1,
+    vertex_vertex_constraint_type: int = 2,
+) -> List[Tuple[int, int, int]]:
+    """
+    正四面体ユニット用の FNC 局所ペアを作る。
+
+    返り値は、テンプレート内の 1 始まり局所原子番号で表した
+    (local_i, local_j, constraint_type) のリストである。
+    PO4.xyz が P, O, O, O, O の順なら、P-O 4 本と O-O 6 本を返す。
+    実際の Packmol XYZ 番号や POSCAR/cfg 番号への変換は builder 側で行う。
+    """
+    if vertex_indices is None:
+        vertex_indices = [2, 3, 4, 5]
+
+    vertex_index_list: List[int] = list(vertex_indices)
+    if len(vertex_index_list) != 4:
+        raise ValueError("正四面体ユニットの頂点原子は 4 個で指定する。")
+
+    fnc_pairs: List[Tuple[int, int, int]] = []
+
+    for vertex_index in vertex_index_list:
+        fnc_pairs.append((center_index, vertex_index, center_vertex_constraint_type))
+
+    for i, vertex_i in enumerate(vertex_index_list):
+        for vertex_j in vertex_index_list[i + 1:]:
+            fnc_pairs.append((vertex_i, vertex_j, vertex_vertex_constraint_type))
+
+    return fnc_pairs
+
+def _midpoint_distance(distance_range: Tuple[float, float], name: str) -> float:
+    """
+    FNC の rmin/rmax から Packmol テンプレート用の代表距離を返す。
+    """
+    rmin, rmax = distance_range
+    if rmin <= 0.0:
+        raise ValueError(f"{name} の rmin は正の値で指定する。")
+    if rmax <= 0.0:
+        raise ValueError(f"{name} の rmax は正の値で指定する。")
+    if rmin >= rmax:
+        raise ValueError(f"{name} は rmin < rmax で指定する。")
+    return 0.5 * (rmin + rmax)
+
+
+def make_tetrahedral_unit_fnc_spec_from_ranges(
+    center_vertex_range: Tuple[float, float],
+    vertex_vertex_range: Tuple[float, float],
+    center_index: int = 1,
+    vertex_indices: Optional[Sequence[int]] = None,
+    center_vertex_constraint_type: int = 1,
+    vertex_vertex_constraint_type: int = 2,
+    geometry_distance_tolerance: float = 0.05,
+) -> TetrahedralUnitFncSpec:
+    """
+    FNC の rmin/rmax を一次情報として、正四面体ユニットの仕様を作る。
+
+    center_vertex_range は中心原子-頂点原子の FNC 距離範囲である。
+    vertex_vertex_range は頂点原子-頂点原子の FNC 距離範囲である。
+
+    Packmol に渡す PO4 などのテンプレート XYZ 用距離は、これらの範囲の
+    中央値から派生させる。したがって、Packmol 用距離と FNC 用距離範囲を
+    利用側で二重管理しない。
+
+    geometry_distance_tolerance は FNC の許容幅ではない。
+    FNC range の中央値から作った中心-頂点距離と頂点-頂点距離が、
+    正四面体として幾何学的に整合しているかを検査するためだけに使う。
+    """
+    center_vertex_distance = _midpoint_distance(
+        center_vertex_range,
+        "center_vertex_range",
+    )
+    vertex_vertex_distance = _midpoint_distance(
+        vertex_vertex_range,
+        "vertex_vertex_range",
+    )
+
+    _validate_regular_tetrahedron_distances(
+        center_vertex_distance=center_vertex_distance,
+        vertex_vertex_distance=vertex_vertex_distance,
+        distance_tolerance=geometry_distance_tolerance,
+    )
+
+    fnc_pairs_in_template = make_tetrahedral_unit_fnc_pairs(
+        center_index=center_index,
+        vertex_indices=vertex_indices,
+        center_vertex_constraint_type=center_vertex_constraint_type,
+        vertex_vertex_constraint_type=vertex_vertex_constraint_type,
+    )
+
+    return TetrahedralUnitFncSpec(
+        center_vertex_distance=center_vertex_distance,
+        vertex_vertex_distance=vertex_vertex_distance,
+        fnc_pairs_in_template=fnc_pairs_in_template,
+        fnc_distance_ranges={
+            center_vertex_constraint_type: center_vertex_range,
+            vertex_vertex_constraint_type: vertex_vertex_range,
+        },
+    )
+

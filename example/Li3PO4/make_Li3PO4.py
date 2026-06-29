@@ -18,7 +18,11 @@ PO4分子の内部にはあらかじめ P:1, O:4 が共有結合を保護され�
 import shutil
 
 from packmol_util.builder import AmorphousBuilder
-from packmol_util.model import write_single_atom_xyz, write_tetrahedral_unit_xyz
+from packmol_util.model import (
+    make_tetrahedral_unit_fnc_spec_from_ranges,
+    write_single_atom_xyz,
+    write_tetrahedral_unit_xyz,
+)
 
 
 def main() -> None:
@@ -51,7 +55,7 @@ def main() -> None:
     #
     # radii は Packmol の配置時に使う元素記号別の packing 半径である。
     # これは PO4 内部の P-O 距離や O-O 距離を作る値ではない。
-    # PO4 内部距離は p_o_distance と o_o_distance で指定し、XYZ 座標として固定する。
+    # PO4 内部距離は FNC の rmin/rmax から代表距離を派生させ、XYZ 座標として固定する。
     # radii は、作成済みの PO4 ユニットや Li 原子をセル内に配置するとき、他ユニット・他原子との
     # 重なりを避けるための排除半径である。
     # ------------------------------------------------------------
@@ -65,17 +69,18 @@ def main() -> None:
     }
 
     # ------------------------------------------------------------
-    # PO4 ユニット内部の幾何を指定する。
-    # p_o_distance は PO4 ユニット内の P-O 距離である。
-    # o_o_distance は PO4 ユニット内の O-O 距離である。
-    # 正四面体条件を満たすようにパラメータを選ぶ。
+    # PO4 ユニット内部の距離条件を FNC 側の rmin/rmax として指定する。
+    # Packmol 用の PO4.xyz 代表距離は、この FNC 範囲の中央値からモジュール側で派生させる。
+    # したがって、Packmol 用距離と FNC 用距離範囲を二重管理しない。
     # ------------------------------------------------------------
-    p_o_distance: float = 1.30
-    o_o_distance: float = 2.10
+    po4_fnc_spec = make_tetrahedral_unit_fnc_spec_from_ranges(
+        center_vertex_range=(1.25, 1.35),  # P-O rmin/rmax [Å]
+        vertex_vertex_range=(2.05, 2.20),  # O-O rmin/rmax [Å]
+    )
 
     # Packmol 配置時の全体的な近接回避距離である。
     # この値は PO4 内部の P-O 距離や O-O 距離ではない。
-    # p_o_distance / o_o_distance は分子ユニット内部の幾何を決める値であり、
+    # PO4 内部の幾何は、上で指定した FNC rmin/rmax から派生した代表距離で決める。
     # minimum_separation_distance は、Li ユニットや PO4 ユニット同士を箱の中に置くときの全体条件である。
     minimum_separation_distance: float = 1.8
 
@@ -89,9 +94,9 @@ def main() -> None:
         center_element="P",
         vertex_element="O",
         # 中心原子—頂点原子の距離 [Å]
-        center_vertex_distance=p_o_distance,
+        center_vertex_distance=po4_fnc_spec.center_vertex_distance,
         # 頂点原子—頂点原子の距離 [Å] (理想的な四面体では 2.123 くらい)
-        vertex_vertex_distance=o_o_distance,
+        vertex_vertex_distance=po4_fnc_spec.vertex_vertex_distance,
     )
 
     # ============================================================
@@ -124,14 +129,55 @@ def main() -> None:
     # ============================================================
     for unit_name, cfg in li3po4_units.items():
         calculated_number = cfg["unit_ratio"] * builder.multiplier
+
+        # --------------------------------------------------------
+        # Packmol 用 PO4.xyz の形状は変更しない。
+        #
+        # ここで指定する FNC 情報は、Packmol による初期配置そのものには使わない。
+        # Packmol 後の最終構造から RMC 用 .fnc を作る段階で使う。
+        #
+        # fnc_pairs_in_template
+        #     テンプレート内部の FNC ペア定義である。
+        #     PO4 の場合、P-O と O-O の両方の候補ペアを持つ。
+        #
+        # fnc_distance_ranges
+        #     constraint type ごとの許容距離範囲である。
+        #
+        # fnc_output_constraint_types
+        #     .fnc に実際に出力する constraint type を選ぶ。
+        #     None の場合は全ての constraint type を出力する。
+        #
+        # この Li3PO4 サンプルでは、po4_fnc_spec の定義は次の対応である。
+        #     type 1 : P-O
+        #     type 2 : O-O
+        #
+        # 今回は O-O を RMC の FNC から外したいので、PO4 には [1] を指定する。
+        # これにより、初期 PO4.xyz は P-O / O-O から作った正四面体のまま維持し、
+        # RMC 用 .fnc には P-O だけを書く。
+        #
+        # P-O と O-O の両方を拘束したい場合は、下の [1] を [1, 2] に変更する。
+        # 全 constraint type を出力したい場合は、None を指定する。
+        # --------------------------------------------------------
+        fnc_pairs_in_template = None
+        fnc_distance_ranges = None
+        fnc_output_constraint_types = None
+
+        if unit_name == "PO4":
+            fnc_pairs_in_template = po4_fnc_spec.fnc_pairs_in_template
+            fnc_distance_ranges = po4_fnc_spec.fnc_distance_ranges
+            fnc_output_constraint_types = [1]
+
         builder.add_template(
             xyz_file=cfg["xyz"],
             number=calculated_number,  # 同期された引数名 'number' で配置個数を引き渡す
             packing_radii=cfg["radii"],
+            fnc_pairs_in_template=fnc_pairs_in_template,
+            fnc_distance_ranges=fnc_distance_ranges,
+            fnc_output_constraint_types=fnc_output_constraint_types,
         )
 
     # 5. 構造構築と出力
-    builder.build(output_prefix="Li3PO4")
+    builder.build(output_prefix="Li3PO4", fnc_file="Li3PO4.fnc")
     shutil.copyfile("POSCAR", "POSCAR.vasp")
 
 

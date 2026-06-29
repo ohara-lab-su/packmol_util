@@ -74,6 +74,19 @@ class Packmol:
             total = total + value
         return total
 
+    def count_atoms_in_xyz(
+        self,
+        xyz_file: str,
+    ) -> int:
+        """XYZ ファイル先頭行から原子数を読む。"""
+        with open(xyz_file, "r") as f:
+            first_line = f.readline().strip()
+
+        atom_count = int(first_line)
+        if atom_count <= 0:
+            raise ValueError(f"XYZ ファイルの原子数が正ではない: {xyz_file}")
+        return atom_count
+
     @staticmethod
     def get_atomic_weight(
         element: str,
@@ -292,10 +305,10 @@ class Packmol:
             )
 
         if result.returncode != 0:
-            print(
-                f"Packmol の終了ステータスが 0 ではありません (code={result.returncode})"
+            raise RuntimeError(
+                "Packmol の実行に失敗した。"
+                f" returncode={result.returncode}, log={output_log}"
             )
-            print(f"詳細はログ {output_log} を確認してください。")
 
     def xyz_to_poscar(
         self,
@@ -304,7 +317,7 @@ class Packmol:
         packmol_inp: str = "packmol.inp",
         comment: str = "packmol",
         elements: Optional[List[str]] = None,
-    ) -> None:
+    ) -> Dict[int, int]:
         """
         Packmol が出力した XYZ を VASP POSCAR へ変換する。
 
@@ -313,6 +326,11 @@ class Packmol:
         ここで元素順に並べ替えてセル長で割る。
 
         セル長は packmol.inp の inside box 行から読む。
+
+        Returns:
+            Dict[int, int]: Packmol XYZ の 1 始まり原子番号から、POSCAR の
+                1 始まり原子番号への対応表。FNC を最終 POSCAR/cfg 番号で
+                書くために使う。
         """
         self._logger.info("== xyz_to_poscar()")
         if elements is None:
@@ -347,15 +365,28 @@ class Packmol:
         frac_atoms = [(sym, x / L, y / L, z / L) for sym, x, y, z in xyz_atoms]
 
         # POSCAR では元素ごとに座標をまとめて出力するため、元素別に数と座標を集める。
+        # ここで同時に、Packmol XYZ 番号から POSCAR 番号への対応表を作る。
+        # FNC は RMC が読む cfg/POSCAR 側の番号で書く必要があるため、この写像が必要である。
         species_counts = {s: 0 for s in elements}
         species_positions = {s: [] for s in elements}
+        species_xyz_indices = {s: [] for s in elements}
 
+        xyz_index = 1
         for sym, fx, fy, fz in frac_atoms:
             if sym in elements:
                 species_counts[sym] += 1
                 species_positions[sym].append((fx, fy, fz))
+                species_xyz_indices[sym].append(xyz_index)
             else:
                 raise RuntimeError(f"未知の元素シンボル: {sym}")
+            xyz_index = xyz_index + 1
+
+        xyz_to_poscar_index: Dict[int, int] = {}
+        poscar_index = 1
+        for sym in elements:
+            for original_xyz_index in species_xyz_indices[sym]:
+                xyz_to_poscar_index[original_xyz_index] = poscar_index
+                poscar_index = poscar_index + 1
 
         # VASP5 形式の POSCAR を書く。元素順序は make_*.py 側の symbols に従う。
         with open(poscar_file, "w") as f:
@@ -371,3 +402,90 @@ class Packmol:
             for s in elements:
                 for fx, fy, fz in species_positions[s]:
                     f.write(f"{fx:.10f}  {fy:.10f}  {fz:.10f}\n")
+
+        return xyz_to_poscar_index
+
+    def write_fnc_file(
+        self,
+        fnc_file: str,
+        total_atom_count: int,
+        fnc_pairs: Sequence[Tuple[int, int, int]],
+        distance_ranges_by_type: Dict[int, Tuple[float, float]],
+        title: str = "Fixed neighbours constraints generated from Packmol mapping",
+    ) -> None:
+        """
+        RMC_POT の通常 FNC 用 *.fnc ファイルを書き出す。
+
+        fnc_pairs は、すでに最終 POSCAR/cfg の 1 始まり原子番号へ変換済みの
+        (atom_i, atom_j, constraint_type) で指定する。
+        RMC_POT の通常 FNC は、各原子について FNC neighbour の index と
+        constraint type を列挙する形式なので、ここで対称な neighbour list へ展開する。
+        """
+        self._logger.info("== write_fnc_file()")
+
+        if total_atom_count <= 0:
+            raise ValueError("total_atom_count は正の整数で指定する。")
+
+        if len(distance_ranges_by_type) == 0:
+            raise ValueError("distance_ranges_by_type は 1 件以上指定する。")
+
+        sorted_type_indices = sorted(distance_ranges_by_type.keys())
+        expected_type_indices = list(range(1, len(sorted_type_indices) + 1))
+        if sorted_type_indices != expected_type_indices:
+            raise ValueError(
+                "FNC constraint type は 1 から連続する整数で指定する。"
+                f" types={sorted_type_indices}"
+            )
+
+        neighbours_by_atom: Dict[int, List[Tuple[int, int]]] = {}
+        atom_index = 1
+        while atom_index <= total_atom_count:
+            neighbours_by_atom[atom_index] = []
+            atom_index = atom_index + 1
+
+        for atom_i, atom_j, constraint_type in fnc_pairs:
+            if atom_i < 1 or atom_i > total_atom_count:
+                raise ValueError(f"FNC 原子番号が範囲外である: {atom_i}")
+            if atom_j < 1 or atom_j > total_atom_count:
+                raise ValueError(f"FNC 原子番号が範囲外である: {atom_j}")
+            if atom_i == atom_j:
+                raise ValueError(f"FNC ペアに同一原子が指定されている: {atom_i}")
+            if constraint_type not in distance_ranges_by_type:
+                raise ValueError(
+                    f"未定義の FNC constraint type である: {constraint_type}"
+                )
+
+            neighbours_by_atom[atom_i].append((atom_j, constraint_type))
+            neighbours_by_atom[atom_j].append((atom_i, constraint_type))
+
+        with open(fnc_file, "w") as f:
+            f.write(f"{title}\n")
+            f.write("\n")
+            f.write(" No. of possible rmin-rmax pairs:\n")
+            f.write(f" {len(sorted_type_indices)}\n")
+            f.write(
+                " "
+                + " ".join(
+                    f"{distance_ranges_by_type[t][0]:.8f}" for t in sorted_type_indices
+                )
+                + "\n"
+            )
+            f.write(
+                " "
+                + " ".join(
+                    f"{distance_ranges_by_type[t][1]:.8f}" for t in sorted_type_indices
+                )
+                + "\n"
+            )
+            f.write("\n")
+            f.write(f" {total_atom_count}\n")
+            f.write("\n")
+
+            atom_index = 1
+            while atom_index <= total_atom_count:
+                neighbours = neighbours_by_atom[atom_index]
+                f.write(f" {atom_index} {len(neighbours)}\n")
+                if len(neighbours) > 0:
+                    f.write(" " + " ".join(str(n[0]) for n in neighbours) + "\n")
+                    f.write(" " + " ".join(str(n[1]) for n in neighbours) + "\n")
+                atom_index = atom_index + 1
