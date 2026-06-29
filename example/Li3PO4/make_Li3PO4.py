@@ -129,43 +129,51 @@ def main() -> None:
     # ============================================================
     for unit_name, cfg in li3po4_units.items():
         calculated_number = cfg["unit_ratio"] * builder.multiplier
+
+        # --------------------------------------------------------
+        # Packmol 用 PO4.xyz の形状は変更しない。
+        #
+        # ここで指定する FNC 情報は、Packmol による初期配置そのものには使わない。
+        # Packmol 後の最終構造から RMC 用 .fnc を作る段階で使う。
+        #
+        # fnc_pairs_in_template
+        #     テンプレート内部の FNC ペア定義である。
+        #     PO4 の場合、P-O と O-O の両方の候補ペアを持つ。
+        #
+        # fnc_distance_ranges
+        #     constraint type ごとの許容距離範囲である。
+        #
+        # fnc_output_constraint_types
+        #     .fnc に実際に出力する constraint type を選ぶ。
+        #     None の場合は全ての constraint type を出力する。
+        #
+        # この Li3PO4 サンプルでは、po4_fnc_spec の定義は次の対応である。
+        #     type 1 : P-O
+        #     type 2 : O-O
+        #
+        # 今回は O-O を RMC の FNC から外したいので、PO4 には [1] を指定する。
+        # これにより、初期 PO4.xyz は P-O / O-O から作った正四面体のまま維持し、
+        # RMC 用 .fnc には P-O だけを書く。
+        #
+        # P-O と O-O の両方を拘束したい場合は、下の [1] を [1, 2] に変更する。
+        # 全 constraint type を出力したい場合は、None を指定する。
+        # --------------------------------------------------------
+        fnc_pairs_in_template = None
+        fnc_distance_ranges = None
+        fnc_output_constraint_types = None
+
+        if unit_name == "PO4":
+            fnc_pairs_in_template = po4_fnc_spec.fnc_pairs_in_template
+            fnc_distance_ranges = po4_fnc_spec.fnc_distance_ranges
+            fnc_output_constraint_types = [1]
+
         builder.add_template(
             xyz_file=cfg["xyz"],
             number=calculated_number,  # 同期された引数名 'number' で配置個数を引き渡す
             packing_radii=cfg["radii"],
-            fnc_pairs_in_template=(
-                po4_fnc_spec.fnc_pairs_in_template if unit_name == "PO4" else None
-            ),
-            fnc_distance_ranges=(
-                po4_fnc_spec.fnc_distance_ranges if unit_name == "PO4" else None
-            ),
-            # --------------------------------------------------------
-            # Packmol 用 PO4.xyz の形状は変更しない。
-            #
-            # ここでは「Packmol 後に生成する .fnc」に
-            # 出力する constraint type を選択するだけである。
-            #
-            # None
-            #     FNC に全 constraint type を出力する（デフォルト）。
-            #
-            # [1]
-            #     constraint type 1 のみ出力する。
-            #     Li3PO4 のサンプルでは
-            #         type 1 : P-O
-            #         type 2 : O-O
-            #     として作成しているため、
-            #     O-O は FNC に出力されず、
-            #     初期 PO4 形状だけ保持したまま
-            #     RMC 中は O-O を拘束しない。
-            #
-            # [2]
-            #     O-O のみ拘束する例。
-            #
-            # [1, 2]
-            #     P-O, O-O の両方を拘束する。
-            #     （None と同じ結果）
-            # --------------------------------------------------------
-            fnc_output_constraint_types=([1] if unit_name == "PO4" else None),
+            fnc_pairs_in_template=fnc_pairs_in_template,
+            fnc_distance_ranges=fnc_distance_ranges,
+            fnc_output_constraint_types=fnc_output_constraint_types,
         )
 
     # 5. 構造構築と出力
