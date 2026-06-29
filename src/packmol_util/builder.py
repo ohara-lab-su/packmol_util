@@ -100,6 +100,8 @@ class AmorphousBuilder:
         packing_radii: Optional[Dict[str, float]] = None,
         fnc_pairs_in_template: Optional[List[Tuple[int, int, int]]] = None,
         fnc_distance_ranges: Optional[Dict[int, Tuple[float, float]]] = None,
+        # packmol後に、FNC作成での形状固定の選択
+        fnc_output_constraint_types: Optional[List[int]] = None,
     ):
         """
         Packmol の 1 つの structure ブロックに対応するテンプレート情報を登録する。
@@ -113,6 +115,10 @@ class AmorphousBuilder:
                                    (local_i, local_j, constraint_type) のリストで指定する。
             fnc_distance_ranges: FNC constraint type ごとの距離範囲。
                                  {type: (rmin, rmax)} で指定する。
+            fnc_output_constraint_types: .fnc に実際に出力する constraint type のリスト。
+                                         None の場合は全 type を出力する。
+                                         例: [1] を指定すると type 1 のペアだけを出力する。
+                                         Packmol 用 XYZ テンプレートの形状や配置には影響しない。
         """
         # builder では、テンプレートをまだ Packmol 入力へ変換しない。
         # ここでは「どの XYZ テンプレートを何個置くか」と、必要なら配置用 packing 半径だけを保存する。
@@ -124,6 +130,11 @@ class AmorphousBuilder:
                 "radii": packing_radii,
                 "fnc_pairs_in_template": fnc_pairs_in_template,
                 "fnc_distance_ranges": fnc_distance_ranges,
+                # Packmol は xyz_file のテンプレート形状をそのまま配置する。
+                # この指定は Packmol には渡さず、Packmol 後に .fnc を作る段階だけで使う。
+                # None: 全 FNC type を出力する。
+                # [1]: type 1 の拘束だけを .fnc に出力する。
+                "fnc_output_constraint_types": fnc_output_constraint_types,
             }
         )
 
@@ -214,6 +225,8 @@ class AmorphousBuilder:
             number = int(template["number"])
             fnc_pairs_in_template = template.get("fnc_pairs_in_template")
             fnc_distance_ranges = template.get("fnc_distance_ranges")
+            # packmol後に形状固定でのFNCの選択有無
+            fnc_output_constraint_types = template.get("fnc_output_constraint_types")
 
             atom_count_in_template = self.packmol_runner.count_atoms_in_xyz(
                 xyz_file=xyz_file,
@@ -225,8 +238,37 @@ class AmorphousBuilder:
                         f"{xyz_file} に fnc_pairs_in_template が指定されているが、"
                         "fnc_distance_ranges が指定されていない。"
                     )
+                ########################################
+                # Packmol 用テンプレート構造は変更しない。
+                # ここでは Packmol 後の最終構造から .fnc を作る段階だけで、
+                # RMC に渡す constraint type を選別する。
+                if fnc_output_constraint_types is None:
+                    active_constraint_types = list(fnc_distance_ranges.keys())
+                else:
+                    active_constraint_types = list(fnc_output_constraint_types)
 
-                for type_index, distance_range in fnc_distance_ranges.items():
+                active_constraint_type_set = set(active_constraint_types)
+
+                for type_index in active_constraint_types:
+                    if type_index not in fnc_distance_ranges:
+                        raise ValueError(
+                            f"{xyz_file} の fnc_output_constraint_types に type={type_index} "
+                            "が指定されているが、fnc_distance_ranges に存在しない。"
+                        )
+
+                active_fnc_pairs_in_template = [
+                    pair
+                    for pair in fnc_pairs_in_template
+                    if pair[2] in active_constraint_type_set
+                ]
+
+                active_fnc_distance_ranges = {
+                    type_index: fnc_distance_ranges[type_index]
+                    for type_index in active_constraint_types
+                }
+                ############################
+
+                for type_index, distance_range in active_fnc_distance_ranges.items():
                     if type_index in merged_distance_ranges:
                         if merged_distance_ranges[type_index] != distance_range:
                             raise ValueError(
@@ -238,8 +280,14 @@ class AmorphousBuilder:
 
                 copy_index = 0
                 while copy_index < number:
-                    molecule_xyz_start = xyz_start_index + copy_index * atom_count_in_template
-                    for local_i, local_j, constraint_type in fnc_pairs_in_template:
+                    molecule_xyz_start = (
+                        xyz_start_index + copy_index * atom_count_in_template
+                    )
+                    for (
+                        local_i,
+                        local_j,
+                        constraint_type,
+                    ) in active_fnc_pairs_in_template:
                         xyz_i = molecule_xyz_start + local_i - 1
                         xyz_j = molecule_xyz_start + local_j - 1
                         poscar_i = xyz_to_poscar_index[xyz_i]

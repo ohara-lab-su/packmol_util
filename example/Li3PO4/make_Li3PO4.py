@@ -18,7 +18,11 @@ PO4分子の内部にはあらかじめ P:1, O:4 が共有結合を保護され�
 import shutil
 
 from packmol_util.builder import AmorphousBuilder
-from packmol_util.model import make_tetrahedral_unit_fnc_spec_from_ranges, write_single_atom_xyz, write_tetrahedral_unit_xyz
+from packmol_util.model import (
+    make_tetrahedral_unit_fnc_spec_from_ranges,
+    write_single_atom_xyz,
+    write_tetrahedral_unit_xyz,
+)
 
 
 def main() -> None:
@@ -135,6 +139,33 @@ def main() -> None:
             fnc_distance_ranges=(
                 po4_fnc_spec.fnc_distance_ranges if unit_name == "PO4" else None
             ),
+            # --------------------------------------------------------
+            # Packmol 用 PO4.xyz の形状は変更しない。
+            #
+            # ここでは「Packmol 後に生成する .fnc」に
+            # 出力する constraint type を選択するだけである。
+            #
+            # None
+            #     FNC に全 constraint type を出力する（デフォルト）。
+            #
+            # [1]
+            #     constraint type 1 のみ出力する。
+            #     Li3PO4 のサンプルでは
+            #         type 1 : P-O
+            #         type 2 : O-O
+            #     として作成しているため、
+            #     O-O は FNC に出力されず、
+            #     初期 PO4 形状だけ保持したまま
+            #     RMC 中は O-O を拘束しない。
+            #
+            # [2]
+            #     O-O のみ拘束する例。
+            #
+            # [1, 2]
+            #     P-O, O-O の両方を拘束する。
+            #     （None と同じ結果）
+            # --------------------------------------------------------
+            fnc_output_constraint_types=([1] if unit_name == "PO4" else None),
         )
 
     # 5. 構造構築と出力
