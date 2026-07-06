@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 2026.07.06, v0.2.3
+
+- Config 機能を追加
+  - `config.py` を導入し、ライブラリ全体で設定情報を一元管理できるようにした
+  - サンプルスクリプトから `config.yml` を利用できるようにした
+  - `config.yml` を利用しない場合は、スクリプト内で設定値を直接指定できる構成とした
+
+- 密度変換サンプルを追加
+  - `make_number_density.py` を追加
+    - 質量密度から数密度を計算するサンプル
+    - `Packmol.number_density_from_mass_density()` を利用
+  - `make_mass_density.py` を追加
+    - 数密度から質量密度を計算するサンプル
+    - `Packmol.mass_density_from_number_density()` を利用
+
+- サンプルコード整理
+  - 密度変換処理を既存ライブラリのメソッドを利用する構成へ変更
+  - 密度変換式の重複実装を廃止
+  - サンプルコードを簡潔化し、`config.yml` と直接指定の切り替えをコメントアウトのみで行えるよう整理
+
 ## 2026.06.29, v0.2.2
 
 - FNC 出力機能を拡張
