@@ -40,7 +40,7 @@ def main() -> None:
 
     # mass_density_g_cm3 は、数密度との対応を記録するために残している。
     # 実際のセル長計算には number_density_A3 を使用する。
-    print(f"mass density   : {mass_density_g_cm3:.10f} g/cm^3")
+    # print(f"mass density   : {mass_density_g_cm3:.10f} g/cm^3")
     print(f"number density : {number_density_A3:.10f} 1/A^3")
 
     # ============================================================
