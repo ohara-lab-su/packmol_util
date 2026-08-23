@@ -29,7 +29,7 @@ def main() -> None:
     # 密度情報
     # AmorphousBuilder には質量密度または数密度のどちらか一方を渡す。
     # 今回は指定された数密度を使用する。
-    mass_density_g_cm3: float = 1.4000000000
+    # mass_density_g_cm3: float = 1.4000000000
     number_density_A3: float = 0.0453277972
 
     # Packmol の tolerance に対応する全原子共通の最小分離距離 [Å]。
