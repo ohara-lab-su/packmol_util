@@ -1,0 +1,13 @@
+title: packmol_util
+lang: ja-JP
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+theme: minima
+header_pages:
+  - philosophy.md
+  - tutorial.md
+  - api.md
+exclude:
+  - generate_api.py
