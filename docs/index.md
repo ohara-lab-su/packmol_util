@@ -1,17 +1,22 @@
----
-layout: default
-title: packmol_util
----
-
 # packmol_util
 
-`packmol_util` は、Packmol を用いたアモルファス初期構造生成で必要になる、組成・密度・セルサイズ・Packmol 入力・構造テンプレート・POSCAR 変換をまとめて扱う Python パッケージです。
+---
 
-## Documentation
+```{toctree}
+:maxdepth: 2
+:caption: Contents:
 
-- [基本的な思想](philosophy.html)
-- [チュートリアル](tutorial.html)
-- [手書きリファレンス](reference.html)
-- [API Reference（ソースから自動生成）](api/)
+philosophy
+tutorial
+reference
+api/modules
+```
 
-API Reference は `src/packmol_util` の Python ソースと docstring から pdoc が GitHub Actions 上で毎回生成します。`docs/api` は手で編集するページではありません。
+---
+
+`packmol_util` のドキュメント。
+
+- {doc}`philosophy` — 基本的な思想
+- {doc}`tutorial` — チュートリアル
+- {doc}`reference` — 手書きリファレンス
+- {doc}`api/modules` — ソースコードと docstring から自動生成される API
