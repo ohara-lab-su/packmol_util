@@ -1,13 +1,4 @@
 title: packmol_util
-lang: ja-JP
+description: Python utilities for building Packmol-based amorphous structures
 markdown: kramdown
-kramdown:
-  input: GFM
-  syntax_highlighter: rouge
 theme: minima
-header_pages:
-  - philosophy.md
-  - tutorial.md
-  - api.md
-exclude:
-  - generate_api.py
