@@ -1,4 +1,4 @@
-name: Deploy GitHub Pages
+name: Build and deploy GitHub Pages
 
 on:
   push:
@@ -18,22 +18,39 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Generate API reference
-        run: python doc/generate_api.py
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
 
-      - name: Setup Pages
+      - name: Install package and API documentation generator
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pdoc
+
+      - name: Generate API reference from source
+        run: |
+          rm -rf docs/api
+          python -m pdoc packmol_util -o docs/api
+
+      - name: Set up Pages
         uses: actions/configure-pages@v5
 
       - name: Build Jekyll site
         uses: actions/jekyll-build-pages@v1
         with:
-          source: ./doc
+          source: ./docs
           destination: ./_site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
 
   deploy:
     environment:
