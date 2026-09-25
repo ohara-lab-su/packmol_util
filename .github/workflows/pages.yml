@@ -25,18 +25,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
-      - name: Install package and API documentation generator
+      # Do NOT install packmol_util here.  The project has runtime-only/private
+      # dependencies (for example x_logger) that are irrelevant to API docs.
+      # pydoctor reads the Python source statically, so API generation does not
+      # import packmol_util and does not resolve its runtime dependencies.
+      - name: Install API documentation generator
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e .
-          python -m pip install pdoc
+          python -m pip install pydoctor
 
       - name: Generate API reference from source
         run: |
           rm -rf docs/api
-          python -m pdoc packmol_util -o docs/api
+          python -m pydoctor \
+            --project-name=packmol_util \
+            --project-base-dir=. \
+            --html-output=docs/api \
+            --make-html \
+            src/packmol_util
 
       - name: Set up Pages
         uses: actions/configure-pages@v5
