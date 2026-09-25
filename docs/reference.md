@@ -1,31 +1,64 @@
----
-layout: default
-title: 手書きリファレンス
----
+# リファレンス
 
-# 手書きリファレンス
+このページは主要コンポーネントの役割を人間向けに整理したものです。
 
-* TOC
-{:toc}
+クラス、メソッド、引数、型注釈、docstring の完全な一覧は {doc}`api/modules` に自動生成されます。
 
-このページは API 自動生成ページとは別の、人間向けの入口です。厳密なシグネチャ、型注釈、docstring は [API Reference](api/) を参照してください。
+## `AmorphousBuilder`
 
-## `builder`
+構造生成全体をまとめる高レベル I/F です。
 
-`AmorphousBuilder` は通常利用する高レベル API です。組成比、希望原子数、密度から構造生成までの一連の処理をまとめます。
+主な役割:
 
-## `packmol`
+- 元素と組成比の保持
+- 総原子数と組成比の整合
+- 組成単位倍率の決定
+- 質量密度または数密度からセルサイズを決定
+- Packmol template の登録
+- Packmol 入力生成
+- Packmol 実行
+- POSCAR 変換
 
-`Packmol` は密度と数密度の変換、原子数、セルサイズ、Packmol 実行、XYZ/POSCAR 変換などの低レベル処理を担当します。
+通常の利用ではこのクラスを入口にします。
 
-## `packmol_inp`
+## `Packmol`
 
-`PackmolInp` は Packmol の入力ファイルを組み立てます。structure ブロックや packing radius の指定を扱います。
+Packmol の実行と、その周辺の数値処理を担当します。
+
+主な役割:
+
+- 原子量・平均原子量
+- 質量密度と数密度の変換
+- 原子数と数密度からセルサイズを計算
+- Packmol 実行
+- XYZ から POSCAR への変換
+
+## `PackmolInp`
+
+Packmol 入力ファイルの構築を担当します。
+
+構造 template、配置数、配置領域、packing radius などを Packmol の入力文法へ変換します。
 
 ## `model`
 
-物質に依存しない構造テンプレートとレシピを扱います。単原子 XYZ、四面体ユニット、packing 半径、FNC 用情報などを共通化します。
+Packmol に渡す構造 template と recipe を扱います。
 
-## `config` / `param`
+単原子 template のほか、複数原子からなる構造ユニットの XYZ template を生成できます。
 
-設定値と物理定数・原子量を保持します。
+## `Config`
+
+設定ファイルから `packmol_util` の設定値を読み込むためのクラスです。
+
+## `param`
+
+原子量など、密度・セルサイズ計算に利用する定数を保持します。
+
+## API Reference
+
+```{toctree}
+:maxdepth: 2
+
+api/modules
+```
+
+この部分は手書きではありません。`docs/build.sh` が `src/packmol_util` を走査してビルド時に生成します。
