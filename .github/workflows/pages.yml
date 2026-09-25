@@ -1,4 +1,4 @@
-name: Build and deploy GitHub Pages
+name: Deploy GitHub Pages
 
 on:
   push:
@@ -18,41 +18,65 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # Do NOT install packmol_util here.  The project has runtime-only/private
-      # dependencies (for example x_logger) that are irrelevant to API docs.
-      # pydoctor reads the Python source statically, so API generation does not
-      # import packmol_util and does not resolve its runtime dependencies.
-      - name: Install API documentation generator
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pydoctor
+      - name: Install Sphinx
+        run: python -m pip install sphinx
 
-      - name: Generate API reference from source
-        run: |
-          rm -rf docs/api
-          python -m pydoctor \
-            --project-name=packmol_util \
-            --project-base-dir=. \
-            --html-output=docs/api \
-            --make-html \
-            src/packmol_util
-
-      - name: Set up Pages
+      - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Build Jekyll site
+      - name: Build handwritten Pages
         uses: actions/jekyll-build-pages@v1
         with:
           source: ./docs
           destination: ./_site
+
+      - name: Generate API documentation automatically
+        shell: bash
+        run: |
+          rm -rf /tmp/packmol-api
+          mkdir -p /tmp/packmol-api
+
+          cat > /tmp/packmol-api/conf.py <<'PY'
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, str(Path.cwd() / "src"))
+
+          project = "packmol_util"
+          extensions = [
+              "sphinx.ext.autodoc",
+              "sphinx.ext.napoleon",
+          ]
+          autodoc_mock_imports = ["x_logger", "yaml"]
+          autodoc_default_options = {
+              "members": True,
+              "undoc-members": True,
+              "show-inheritance": True,
+          }
+          napoleon_google_docstring = True
+          napoleon_numpy_docstring = False
+          html_theme = "alabaster"
+          PY
+
+          python -m sphinx.ext.apidoc \
+            --force \
+            --separate \
+            --module-first \
+            --output-dir /tmp/packmol-api \
+            src/packmol_util
+
+          python -m sphinx \
+            -b html \
+            /tmp/packmol-api \
+            _site/api
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
