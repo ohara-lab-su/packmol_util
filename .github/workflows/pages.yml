@@ -78,25 +78,26 @@ jobs:
 
       - name: Prepare Pages source
         run: |
-          rm -rf /tmp/pages-source
-          mkdir -p /tmp/pages-source
-          cp -a docs/. /tmp/pages-source/
+          rm -rf pages-source pages-site
+          mkdir -p pages-source
+          cp -a docs/. pages-source/
 
       - name: Build Jekyll site
         uses: actions/jekyll-build-pages@v1
         with:
-          source: /tmp/pages-source
-          destination: /tmp/pages-site
+          source: ./pages-source
+          destination: ./pages-site
 
       - name: Merge API documentation
         run: |
-          mkdir -p /tmp/pages-site/api
-          cp -a /tmp/packmol-api-html/. /tmp/pages-site/api/
+          sudo mkdir -p pages-site/api
+          sudo cp -a /tmp/packmol-api-html/. pages-site/api/
+          sudo chown -R "$(id -u):$(id -g)" pages-site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: /tmp/pages-site
+          path: ./pages-site
 
   deploy:
     environment:
