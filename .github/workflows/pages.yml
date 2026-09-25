@@ -41,7 +41,7 @@ jobs:
       - name: Generate API documentation automatically
         shell: bash
         run: |
-          rm -rf /tmp/packmol-api
+          rm -rf /tmp/packmol-api /tmp/packmol-api-html
           mkdir -p /tmp/packmol-api
 
           cat > /tmp/packmol-api/conf.py <<'PY'
@@ -76,7 +76,13 @@ jobs:
           python -m sphinx \
             -b html \
             /tmp/packmol-api \
-            _site/api
+            /tmp/packmol-api-html
+
+      - name: Add API documentation to Pages
+        shell: bash
+        run: |
+          mkdir -p _site/api
+          cp -a /tmp/packmol-api-html/. _site/api/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
