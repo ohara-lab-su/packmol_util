@@ -45,12 +45,14 @@ jobs:
           mkdir -p /tmp/packmol-api
 
           cat > /tmp/packmol-api/conf.py <<'PY'
+          import os
           import sys
           from pathlib import Path
 
-          sys.path.insert(0, str(Path.cwd() / "src"))
+          sys.path.insert(0, str(Path(os.environ["GITHUB_WORKSPACE"]) / "src"))
 
           project = "packmol_util"
+          master_doc = "modules"
           extensions = [
               "sphinx.ext.autodoc",
               "sphinx.ext.napoleon",
