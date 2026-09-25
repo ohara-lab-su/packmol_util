@@ -1,25 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOCS_DIR="$SCRIPT_DIR"
+DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$DOCS_DIR/.." && pwd)"
 SRC_DIR="$ROOT_DIR/src"
 
-PKG_NAME="packmol_util"
-
 export PYTHONPATH="$SRC_DIR:${PYTHONPATH:-}"
 
-echo "Cleaning build..."
 rm -rf "$DOCS_DIR/_build" "$DOCS_DIR/api"
-mkdir -p "$DOCS_DIR/api"
 
-echo "Generating API stubs with sphinx-apidoc..."
-sphinx-apidoc -o "$DOCS_DIR/api" "$SRC_DIR/$PKG_NAME" -f --module-first
+sphinx-apidoc \
+  -o "$DOCS_DIR/api" \
+  "$SRC_DIR/packmol_util" \
+  --force \
+  --module-first
 
-echo "Building HTML..."
-sphinx-build -b html "$DOCS_DIR" "$DOCS_DIR/_build/html"
+sphinx-build \
+  -b html \
+  "$DOCS_DIR" \
+  "$DOCS_DIR/_build/html"
 
 touch "$DOCS_DIR/_build/html/.nojekyll"
-
-echo "Done."
