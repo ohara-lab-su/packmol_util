@@ -32,12 +32,6 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Build handwritten Pages
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./docs
-          destination: ./_site
-
       - name: Generate API documentation automatically
         shell: bash
         run: |
@@ -80,11 +74,19 @@ jobs:
             /tmp/packmol-api \
             /tmp/packmol-api-html
 
-      - name: Add API documentation to Pages
+      - name: Stage handwritten Pages and API
         shell: bash
         run: |
-          mkdir -p _site/api
-          cp -a /tmp/packmol-api-html/. _site/api/
+          rm -rf /tmp/pages-source
+          mkdir -p /tmp/pages-source/api
+          cp -a docs/. /tmp/pages-source/
+          cp -a /tmp/packmol-api-html/. /tmp/pages-source/api/
+
+      - name: Build Pages
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: /tmp/pages-source
+          destination: ./_site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
