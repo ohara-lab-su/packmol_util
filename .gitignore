@@ -3,10 +3,12 @@
 !POSCAR
 !INCAR
 
+example/
+try/
+
 __pycache__/
 build/
 work/
-example/
 .idea/
 *.egg-info/
 *.pyc
