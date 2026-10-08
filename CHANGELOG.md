@@ -1,5 +1,8 @@
 # CHANGELOG
 
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/ohara-lab-su/packmol_util/blob/main/CHANGELOG.md)
+[![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://github.com/ohara-lab-su/packmol_util/blob/main/CHANGELOG.ja.md)
+
 ## 2026.10.07, v0.2.4
 
 - Minor adjustments for public release

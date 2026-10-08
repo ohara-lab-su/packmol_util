@@ -1,6 +1,6 @@
 # packmol_util
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/shimane-dev/rmc_dft/blob/main/README.md)
-[![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://github.com/shimane-dev/rmc_dft/blob/main/README.ja.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/ohara-lab-su/packmol_util/blob/main/README.md)
+[![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://github.com/ohara-lab-su/packmol_util/blob/main/README.ja.md)
 
 
 Packmol を用いて、第一原理計算（VASP）や分子動力学（MD）シミュレーションのための**アモルファス初期構造（POSCAR）を自動生成する Python ユーティリティキット**。
