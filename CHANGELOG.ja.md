@@ -1,5 +1,12 @@
 # CHANGELOG
 
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/ohara-lab-su/packmol_util/blob/main/CHANGELOG.md)
+[![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://github.com/ohara-lab-su/packmol_util/blob/main/CHANGELOG.ja.md)
+
+## 2026.10.08, v0.2.5
+
+- LICENSE 追加
+ 
 ## 2026.10.07, v0.2.4
 
 - public 用に微調整
