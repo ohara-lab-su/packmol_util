@@ -1,30 +1,17 @@
 # packmol_util
 
-`packmol_util` は、Packmol を利用したアモルファス初期構造作成を Python から扱うためのライブラリです。
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://ohara-lab-su.github.io/packmol_util/en/index.html) [![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://ohara-lab-su.github.io/packmol_util/ja/index.html)
 
-組成、総原子数、密度、最小分離距離などの条件から、Packmol 入力の生成、Packmol の実行、生成構造の POSCAR 変換までを扱います。
+`packmol_util` is a Python library for preparing initial amorphous structures using Packmol.
+
+Starting from composition, total atom count, density, and minimum separation constraints, it handles Packmol input generation, execution, and conversion of generated structures to POSCAR format.
 
 ```{toctree}
 :maxdepth: 2
-:caption: Contents:
+:caption: Contents
 
 philosophy
 tutorial
 reference
 api/modules
 ```
-
-## ドキュメント
-
-- {doc}`philosophy` — ライブラリの基本思想と責務分離
-- {doc}`tutorial` — 基本的な使用方法
-- {doc}`reference` — 人間向けに整理した主要コンポーネントの説明
-- {doc}`api/modules` — Python ソースと docstring から自動生成される API Reference
-
-## API Reference
-
-API Reference は手書きではありません。
-
-ビルド時に `sphinx-apidoc` が `src/packmol_util` を走査して `docs/api/` を生成し、その内容を Sphinx が HTML 化します。
-
-したがって `src/packmol_util` の API を変更して `main` に push すると、GitHub Actions の Pages ビルド時に API Reference も再生成されます。

@@ -1,5 +1,7 @@
 # チュートリアル
 
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://ohara-lab-su.github.io/packmol_util/en/tutorial.html) [![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://ohara-lab-su.github.io/packmol_util/ja/tutorial.html)
+
 ## 単原子 template から構造を作る
 
 Fe–Si–B のように、各元素を独立した単原子 template として配置する例です。
