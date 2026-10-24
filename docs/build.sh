@@ -3,21 +3,16 @@ set -euo pipefail
 
 DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$DOCS_DIR/.." && pwd)"
-SRC_DIR="$ROOT_DIR/src"
+export PYTHONPATH="$ROOT_DIR/src:${PYTHONPATH:-}"
 
-export PYTHONPATH="$SRC_DIR:${PYTHONPATH:-}"
+rm -rf "$DOCS_DIR/_build"
+for lang in en ja; do
+  rm -rf "$DOCS_DIR/$lang/api"
+  mkdir -p "$DOCS_DIR/$lang/api"
+  sphinx-apidoc --force --module-first -o "$DOCS_DIR/$lang/api" "$ROOT_DIR/src/packmol_util"
+  sphinx-build -b html -D language="$lang" -c "$DOCS_DIR" "$DOCS_DIR/$lang" "$DOCS_DIR/_build/html/$lang"
+done
 
-rm -rf "$DOCS_DIR/_build" "$DOCS_DIR/api"
-
-sphinx-apidoc \
-  -o "$DOCS_DIR/api" \
-  "$SRC_DIR/packmol_util" \
-  --force \
-  --module-first
-
-sphinx-build \
-  -b html \
-  "$DOCS_DIR" \
-  "$DOCS_DIR/_build/html"
-
+# English is also the root site, built from the SAME English source tree.
+sphinx-build -b html -D language=en -c "$DOCS_DIR" "$DOCS_DIR/en" "$DOCS_DIR/_build/html"
 touch "$DOCS_DIR/_build/html/.nojekyll"

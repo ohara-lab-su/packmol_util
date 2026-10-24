@@ -1,5 +1,7 @@
 # 基本的な思想
 
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://ohara-lab-su.github.io/packmol_util/en/philosophy.html) [![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://ohara-lab-su.github.io/packmol_util/ja/philosophy.html)
+
 ## Packmol より一段上の入力を扱う
 
 Packmol が直接扱うのは、構造テンプレート、配置数、配置領域、最小分離距離などです。

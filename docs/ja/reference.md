@@ -1,5 +1,7 @@
 # リファレンス
 
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://ohara-lab-su.github.io/packmol_util/en/reference.html) [![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://ohara-lab-su.github.io/packmol_util/ja/reference.html)
+
 このページは主要コンポーネントの役割を人間向けに整理したものです。
 
 クラス、メソッド、引数、型注釈、docstring の完全な一覧は {doc}`api/modules` に自動生成されます。
