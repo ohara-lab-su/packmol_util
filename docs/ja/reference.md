@@ -64,3 +64,35 @@ api/modules
 ```
 
 この部分は手書きではありません。`docs/build.sh` が `src/packmol_util` を走査してビルド時に生成します。
+
+
+## 公開 API の使用上の区別
+
+| コンポーネント | 主要 API | 役割 |
+| --- | --- | --- |
+| `AmorphousBuilder` | `__init__`, `multiplier`, `add_template`, `build` | 組成・密度・テンプレートから構造を生成 |
+| `PackmolInp` | `__init__`, `add_structure`, `write` | `.inp` を生成 |
+| `Packmol` | `number_density_from_mass_density`, `mass_density_from_number_density`, `cell_length_from_number_density` | 密度とセル長の計算 |
+| `Packmol` | `compute_element_counts`, `compute_cell_sizes`, `get_unit_atom_count` | 原子数と組成比 |
+| `Packmol` | `run_packmol`, `xyz_to_poscar`, `write_fnc_file`, `count_atoms_in_xyz` | 実行、変換、FNC 出力 |
+| `model` | `write_xyz_template`, `write_single_atom_xyz`, `write_tetrahedral_unit_xyz` | XYZ テンプレート作成 |
+| `model` | `StructureSpec`, `MaterialRecipe`, `make_material_recipe`, `make_atomic_mixture_recipe` | 配置レシピ |
+| `model` | `make_tetrahedral_unit_fnc_pairs`, `make_tetrahedral_unit_fnc_spec_from_ranges`, `TetrahedralUnitFncSpec` | 正四面体 FNC |
+| `model` | `solve_packing_radii_from_pair_distances` | 元素ペア距離から配置半径を近似 |
+| `Config` | `__init__(yaml_path=...)`, `load_yaml()` | YAML 設定の読込 |
+
+### `AmorphousBuilder` の引数
+
+`symbols` と `ratios` は対応する元素と整数比です。`total_atom_count` は希望原子数、`minimum_separation` は Packmol の `tolerance`、`mass_density` は g/cm³、`number_density` は Å⁻³、`packmol_bin` は実行ファイル名またはパスです。密度を両方指定した場合、**数密度が優先**されます。`add_template(xyz_file, number, packing_radii=None, fnc_pairs_in_template=None, fnc_distance_ranges=None, fnc_output_constraint_types=None)` の `number` はテンプレートの**複製個数**であり、原子数ではありません。
+
+### `PackmolInp` の引数
+
+`PackmolInp(minimum_separation_distance, output_xyz, box_length, use_pbc=False)` は立方体セルを使用します。`add_structure(xyz_file, number, packing_radii_by_atom_symbol=None)` の半径辞書は元素記号をキーとします。`write(inp_file)` はテンプレート内の元素記号を 1 始まりの Packmol atom index に変換し、必要に応じて `atoms ... radius ... end atoms` を出力します。
+
+### `Config` の読み込み
+
+`Config(yaml_path="settings.yaml")` はインスタンス属性を、`Config.load_yaml("settings.yaml")` はクラス属性を YAML のキーで上書きします。存在しないキーは `NO SUCH VAR:` と表示されます。`load_yaml()` の引数省略時は環境変数 `PACKMOL_UTIL_CONFIG_YAML` を参照します。インスタンス生成時の `yaml_path` 省略は YAML を読み込みません。`Config` の初期値は Fe–Si–B 系の例示設定であり、`AmorphousBuilder` が自動的に参照するものではありません。
+
+### 制約
+
+`Packmol.write_fnc_file()` は type 1 から連続する拘束種を要求します。`Packmol.xyz_to_poscar()` は Packmol 入力内の最初の `inside box` 行から立方セルの長さを取得します。`PackmolInp` の `pbc` と `inside box` は同じセル長を使用します。入力ファイルを直接変更する場合、セル長の解釈との整合を保ってください。
