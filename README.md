@@ -47,3 +47,28 @@ src/
     └── FeSiB/
         └── make_FeSiB.py
 ```
+
+## Example
+
+```python
+from packmol_util.builder import AmorphousBuilder
+from packmol_util.model import write_single_atom_xyz
+
+for symbol in ("Fe", "Si", "B"):
+    write_single_atom_xyz(f"{symbol}.xyz", symbol)
+
+builder = AmorphousBuilder(
+    symbols=["Fe", "Si", "B"], ratios=[80, 9, 11],
+    total_atom_count=500, minimum_separation=2.0,
+    mass_density=7.35,
+)
+for symbol, ratio in zip(builder.symbols, builder.ratios):
+    builder.add_template(f"{symbol}.xyz", ratio * builder.multiplier)
+builder.build("FeSiB")
+```
+
+The outputs are `FeSiB_packmol.inp`, `FeSiB_packmol.xyz`, `FeSiB_packmol.log`, `POSCAR`, and `POSCAR.vasp`. An `.fnc` file is written when FNC pairs are registered. The POSCAR filenames are fixed. `AmorphousBuilder` adjusts the requested atom count to a nearby integer multiple of the stoichiometric ratio sum when needed.
+
+## Packmol and documentation
+
+The Packmol executable must be installed separately. See the [English tutorial](https://ohara-lab-su.github.io/packmol_util/en/tutorial.html) for installation and input format, the [reference](https://ohara-lab-su.github.io/packmol_util/en/reference.html) for API and FNC details, and the [design philosophy](https://ohara-lab-su.github.io/packmol_util/en/philosophy.html) for component responsibilities.
