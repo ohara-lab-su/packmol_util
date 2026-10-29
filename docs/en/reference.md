@@ -96,3 +96,24 @@ This section is not maintained manually. `docs/build.sh` scans `src/packmol_util
 ### Limitations
 
 `Packmol.write_fnc_file()` requires consecutive constraint types starting at type 1. `Packmol.xyz_to_poscar()` obtains the cubic cell edge length from the first `inside box` line in the Packmol input. `PackmolInp` uses the same cell edge length for `pbc` and `inside box`. If you edit the input file manually, keep the cell dimensions consistent with these assumptions.
+
+
+## Installing bundled scripts and examples
+
+After `pip install packmol-util`, run the following commands in the working directory where you want the files:
+
+```sh
+packmol_util install scripts
+packmol_util install example
+```
+
+The first command copies the contents of the repository's `scripts/` directory, while the second copies `example/`. Subdirectory structures are preserved. For example, `example/Li3PO4/non_builder/make_Li3PO4.py` becomes `./Li3PO4/non_builder/make_Li3PO4.py`.
+
+Existing files are **not overwritten** by default. To overwrite files with the same name, use `--force`:
+
+```sh
+packmol_util install scripts --force
+packmol_util install example --force
+```
+
+Files are copied into the current working directory. Unrelated files are not deleted. This feature does not install the external Packmol executable.

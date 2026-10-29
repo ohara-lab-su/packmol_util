@@ -339,3 +339,24 @@ builder.build("Li3PO4")
 `builder.build("FeSiB")` の出力は `FeSiB_packmol.inp`、`FeSiB_packmol.xyz`、`FeSiB_packmol.log`、`POSCAR`、`POSCAR.vasp` です。FNC ペアが登録されている場合に限り、既定で `FeSiB.fnc` が出力されます。FNC 出力先は `build(output_prefix, fnc_file=...)` で変更できます。`POSCAR` と `POSCAR.vasp` は接頭辞にかかわらず固定名のため、同じ作業ディレクトリで複数回実行すると上書きされます。
 
 `add_template(number=...)` の配置数と各テンプレート内の原子数の積の合計は、補正後の `builder.total_atom_count` に一致させてください。現行 `AmorphousBuilder` はこの一致を `build()` の開始時に検査しません。FNC は Packmol XYZ のテンプレート配置順と POSCAR の元素別並べ替えに依存します。FNC 原子番号は **1 始まり**です。
+
+
+## 付属スクリプト・サンプルのインストール
+
+`pip install packmol-util` 後、任意の作業ディレクトリで次のコマンドを実行できます。
+
+```sh
+packmol_util install scripts
+packmol_util install example
+```
+
+前者はリポジトリの `scripts/` 以下、後者は `example/` 以下のファイルを**現在の作業ディレクトリ**にコピーします。下位ディレクトリ構成も保持します。たとえば `example/Li3PO4/non_builder/make_Li3PO4.py` は `./Li3PO4/non_builder/make_Li3PO4.py` に配置されます。
+
+既存の同名ファイルは既定で上書きせず、スキップします。上書きする場合のみ `--force` を指定してください。
+
+```sh
+packmol_util install scripts --force
+packmol_util install example --force
+```
+
+コピー先はコマンド実行時のカレントディレクトリです。既存の無関係なファイルは削除しません。Packmol 本体のインストールとは別の機能です。
