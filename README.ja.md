@@ -71,3 +71,24 @@ Packmol 入力・XYZ・ログと `POSCAR`、`POSCAR.vasp` が生成されます�
 詳細は[チュートリアル](https://ohara-lab-su.github.io/packmol_util/ja/tutorial.html)、[設計思想](https://ohara-lab-su.github.io/packmol_util/ja/philosophy.html)、[リファレンス](https://ohara-lab-su.github.io/packmol_util/ja/reference.html)を参照してください。
 
 
+
+
+## 付属スクリプト・サンプルのインストール
+
+`pip install packmol-util` 後、任意の作業ディレクトリで次のコマンドを実行できます。
+
+```sh
+packmol_util install scripts
+packmol_util install example
+```
+
+前者はリポジトリの `scripts/` 以下、後者は `example/` 以下のファイルを**現在の作業ディレクトリ**にコピーします。下位ディレクトリ構成も保持します。たとえば `example/Li3PO4/non_builder/make_Li3PO4.py` は `./Li3PO4/non_builder/make_Li3PO4.py` に配置されます。
+
+既存の同名ファイルは既定で上書きせず、スキップします。上書きする場合のみ `--force` を指定してください。
+
+```sh
+packmol_util install scripts --force
+packmol_util install example --force
+```
+
+コピー先はコマンド実行時のカレントディレクトリです。既存の無関係なファイルは削除しません。Packmol 本体のインストールとは別の機能です。

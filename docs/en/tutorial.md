@@ -335,3 +335,24 @@ builder.build("Li3PO4")
 `builder.build("FeSiB")` produces `FeSiB_packmol.inp`, `FeSiB_packmol.xyz`, `FeSiB_packmol.log`, `POSCAR`, and `POSCAR.vasp`. By default, `FeSiB.fnc` is also written **only if FNC pairs have been registered**. Specify another FNC destination with `build(output_prefix, fnc_file=...)`. The names `POSCAR` and `POSCAR.vasp` are fixed regardless of the output prefix, so repeated runs in the same working directory overwrite them.
 
 Ensure that the sum of `add_template(number=...)` copy counts multiplied by the atom counts of their respective templates equals the adjusted `builder.total_atom_count`. The current `AmorphousBuilder` does not check this equality at the start of `build()`. FNC generation depends on template placement order in Packmol XYZ and element-based sorting in POSCAR. FNC atom indices are **1-based**.
+
+
+## Installing bundled scripts and examples
+
+After `pip install packmol-util`, run the following commands in the working directory where you want the files:
+
+```sh
+packmol_util install scripts
+packmol_util install example
+```
+
+The first command copies the contents of the repository's `scripts/` directory, while the second copies `example/`. Subdirectory structures are preserved. For example, `example/Li3PO4/non_builder/make_Li3PO4.py` becomes `./Li3PO4/non_builder/make_Li3PO4.py`.
+
+Existing files are **not overwritten** by default. To overwrite files with the same name, use `--force`:
+
+```sh
+packmol_util install scripts --force
+packmol_util install example --force
+```
+
+Files are copied into the current working directory. Unrelated files are not deleted. This feature does not install the external Packmol executable.

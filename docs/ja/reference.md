@@ -96,3 +96,24 @@ api/modules
 ### 制約
 
 `Packmol.write_fnc_file()` は type 1 から連続する拘束種を要求します。`Packmol.xyz_to_poscar()` は Packmol 入力内の最初の `inside box` 行から立方セルの長さを取得します。`PackmolInp` の `pbc` と `inside box` は同じセル長を使用します。入力ファイルを直接変更する場合、セル長の解釈との整合を保ってください。
+
+
+## 付属スクリプト・サンプルのインストール
+
+`pip install packmol-util` 後、任意の作業ディレクトリで次のコマンドを実行できます。
+
+```sh
+packmol_util install scripts
+packmol_util install example
+```
+
+前者はリポジトリの `scripts/` 以下、後者は `example/` 以下のファイルを**現在の作業ディレクトリ**にコピーします。下位ディレクトリ構成も保持します。たとえば `example/Li3PO4/non_builder/make_Li3PO4.py` は `./Li3PO4/non_builder/make_Li3PO4.py` に配置されます。
+
+既存の同名ファイルは既定で上書きせず、スキップします。上書きする場合のみ `--force` を指定してください。
+
+```sh
+packmol_util install scripts --force
+packmol_util install example --force
+```
+
+コピー先はコマンド実行時のカレントディレクトリです。既存の無関係なファイルは削除しません。Packmol 本体のインストールとは別の機能です。

@@ -72,3 +72,24 @@ The outputs are `FeSiB_packmol.inp`, `FeSiB_packmol.xyz`, `FeSiB_packmol.log`, `
 ## Packmol and documentation
 
 The Packmol executable must be installed separately. See the [English tutorial](https://ohara-lab-su.github.io/packmol_util/en/tutorial.html) for installation and input format, the [reference](https://ohara-lab-su.github.io/packmol_util/en/reference.html) for API and FNC details, and the [design philosophy](https://ohara-lab-su.github.io/packmol_util/en/philosophy.html) for component responsibilities.
+
+
+## Installing bundled scripts and examples
+
+After `pip install packmol-util`, run the following commands in the working directory where you want the files:
+
+```sh
+packmol_util install scripts
+packmol_util install example
+```
+
+The first command copies the contents of the repository's `scripts/` directory, while the second copies `example/`. Subdirectory structures are preserved. For example, `example/Li3PO4/non_builder/make_Li3PO4.py` becomes `./Li3PO4/non_builder/make_Li3PO4.py`.
+
+Existing files are **not overwritten** by default. To overwrite files with the same name, use `--force`:
+
+```sh
+packmol_util install scripts --force
+packmol_util install example --force
+```
+
+Files are copied into the current working directory. Unrelated files are not deleted. This feature does not install the external Packmol executable.
