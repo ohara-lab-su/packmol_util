@@ -9,9 +9,9 @@
 
 
 
-A **Python utility kit for automatically generating amorphous initial structures (POSCAR)** for first-principles calculations (VASP) and molecular dynamics (MD) simulations using Packmol.
+`packmol_util` is a **Python library for generating initial amorphous structures from composition, atom count, and density**. Built on Packmol, it automates input preparation, structure packing, and conversion to VASP POSCAR files for first-principles and molecular dynamics simulations.
 
-By specifying only the stoichiometric ratio, density (mass density or number density), and total number of atoms, this tool automatically completes the full workflow: generating the Packmol input file, running Packmol, and outputting a POSCAR in VASP format with Direct coordinates.
+It supports both individual atoms and predefined structural units, such as PO4 tetrahedra, and can generate **FNC constraint files for RMC_POT**. For RMC_POT input preparation, calculation automation, and result analysis, see the independent [rmc_util](https://github.com/ohara-lab-su/rmc_util) package.
 
 ---
 

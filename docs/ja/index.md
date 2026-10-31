@@ -6,9 +6,15 @@
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Documentation-222222?logo=githubpages&logoColor=white)](https://ohara-lab-su.github.io/packmol_util/ja/)
 [![Ohara Lab](https://img.shields.io/badge/Ohara%20Lab-Home-4B5563?logo=homeassistant&logoColor=white)](https://ohara-lab-su.github.io/)
 
-`packmol_util` は Packmol を用いてアモルファス初期構造を作成する Python ライブラリです。
+`packmol_util` は、**Packmol を利用した非晶質材料の初期構造生成を
+Python から自動化するオープンソースライブラリ**です。
+組成・原子数・密度・最小原子間距離を指定し、
+Packmol 入力の作成から実行、POSCAR 形式への変換までを扱えます。
 
-組成、総原子数、密度、最小原子間距離の条件から、Packmol 入力の生成、実行、生成構造の POSCAR 形式への変換を行います。
+RMC_POT 用の FNC 拘束ファイルの生成にも対応し、
+初期構造作成から逆モンテカルロ法による構造モデリングへの接続に利用できます。
+RMC_POT の入力作成・計算自動化・結果解析には、
+独立したライブラリ [rmc_util](https://ohara-lab-su.github.io/rmc_util/ja/) も公開しています。
 
 ```{toctree}
 :maxdepth: 2

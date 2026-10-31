@@ -7,9 +7,15 @@
 [![Ohara Lab](https://img.shields.io/badge/Ohara%20Lab-Home-4B5563?logo=homeassistant&logoColor=white)](https://ohara-lab-su.github.io/index.en.html)
 
 
-`packmol_util` is a Python library for preparing initial amorphous structures using Packmol.
+`packmol_util` is an open-source Python toolkit for generating initial
+amorphous structures with Packmol.
+It automates structure preparation from composition,
+atom count, density,
+and minimum-distance constraints through Packmol execution and POSCAR output.
 
-Starting from composition, total atom count, density, and minimum separation constraints, it handles Packmol input generation, execution, and conversion of generated structures to POSCAR format.
+It also supports generating FNC constraints for RMC_POT,
+helping connect initial structure preparation to reverse Monte Carlo modeling.
+For RMC_POT input preparation, calculation automation, and result analysis, see the independently usable [rmc_util](https://ohara-lab-su.github.io/rmc_util/en/).
 
 ```{toctree}
 :maxdepth: 2
