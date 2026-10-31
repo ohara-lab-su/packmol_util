@@ -65,27 +65,12 @@ packmol_util = "packmol_util.install:main"
     "scripts/make_number_density.py",
 ]
 "share/packmol_util/example/FeSiB" = [
-    "example/FeSiB/B.xyz",
-    "example/FeSiB/Fe.xyz",
-    "example/FeSiB/FeSiB_packmol.inp",
-    "example/FeSiB/FeSiB_packmol.log",
-    "example/FeSiB/FeSiB_packmol.xyz",
-    "example/FeSiB/POSCAR",
-    "example/FeSiB/POSCAR.vasp",
-    "example/FeSiB/Si.xyz",
     "example/FeSiB/make_FeSiB.py",
 ]
 "share/packmol_util/example/FeSiB/non_bulder" = [
     "example/FeSiB/non_bulder/make_FeSiB.py",
 ]
 "share/packmol_util/example/Li3PO4" = [
-    "example/Li3PO4/Li.xyz",
-    "example/Li3PO4/PO4.xyz",
-    "example/Li3PO4/POSCAR",
-    "example/Li3PO4/POSCAR.vasp",
-    "example/Li3PO4/li3po4_packmol.inp",
-    "example/Li3PO4/li3po4_packmol.log",
-    "example/Li3PO4/li3po4_packmol.xyz",
     "example/Li3PO4/make_Li3PO4.py",
 ]
 "share/packmol_util/example/Li3PO4/non_builder" = [
