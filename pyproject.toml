@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "packmol-util"
-version = "0.2.9"
+version = "0.2.10"
 
-description = "using packmol"
+description = "Python toolkit for amorphous structure generation using Packmol, with VASP and RMC_POT support."
 authors = [
     { name="Kengo NAKADA", email="kengo.nakada@email.com" },
 ]
@@ -34,6 +34,12 @@ dependencies = [
     "sphinxcontrib-napoleon",
     "linkify-it-py"
 ]
+
+[project.urls]
+Homepage = "https://ohara-lab-su.github.io/packmol_util/en/"
+Documentation = "https://ohara-lab-su.github.io/packmol_util/en/"
+Repository = "https://github.com/ohara-lab-su/packmol_util"
+Issues = "https://github.com/ohara-lab-su/packmol_util/issues"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

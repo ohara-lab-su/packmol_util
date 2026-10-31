@@ -7,9 +7,9 @@
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Documentation-222222?logo=githubpages&logoColor=white)](https://ohara-lab-su.github.io/packmol_util/ja/)
 [![Ohara Lab](https://img.shields.io/badge/Ohara%20Lab-Home-4B5563?logo=homeassistant&logoColor=white)](https://ohara-lab-su.github.io/)
 
-Packmol を用いて、第一原理計算（VASP）や分子動力学（MD）シミュレーションのためのアモルファス初期構造（POSCAR）を生成する Python ライブラリです。
+`packmol_util` は、**組成・原子数・密度を指定して非晶質材料の初期構造を生成する Python ライブラリ**です。既存の Packmol を利用し、入力作成、配置計算、VASP の POSCAR 出力までを自動化します。第一原理計算や分子動力学の初期構造作成に利用できます。
 
-組成比、総原子数、質量密度または数密度を入力し、Packmol 入力ファイルの作成、実行、XYZ から POSCAR（Direct 座標）への変換を行います。単原子テンプレートと分子ユニットの両方を扱い、RMC_POT の FNC ファイルも生成できます。
+単原子だけでなく PO4 などの構造ユニットを保持した配置にも対応し、**RMC_POT 用の FNC 拘束ファイル**も生成できます。RMC_POT の入力作成・計算自動化・結果解析には、独立した [rmc_util](https://github.com/ohara-lab-su/rmc_util) を利用できます。
 
 ## 特徴
 
