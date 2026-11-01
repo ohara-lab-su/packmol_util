@@ -94,6 +94,4 @@ packmol_util install example --force
 
 Files are copied into the current working directory. Unrelated files are not deleted. This feature does not install the external Packmol executable.
 
-## Acknowledgments
-
 If you find this software helpful in your research, we would be grateful if you could mention Ohara Lab, Shimane University, in the acknowledgments of your publications.
