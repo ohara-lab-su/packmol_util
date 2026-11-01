@@ -7,9 +7,15 @@
 [![Ohara Lab](https://img.shields.io/badge/Ohara%20Lab-Home-4B5563?logo=homeassistant&logoColor=white)](https://ohara-lab-su.github.io/index.en.html)
 
 
-`packmol_util` is a Python library for preparing initial amorphous structures using Packmol.
+`packmol_util` is an open-source Python toolkit for generating initial
+amorphous structures with Packmol.
+It automates structure preparation from composition,
+atom count, density,
+and minimum-distance constraints through Packmol execution and POSCAR output.
 
-Starting from composition, total atom count, density, and minimum separation constraints, it handles Packmol input generation, execution, and conversion of generated structures to POSCAR format.
+It also supports generating FNC constraints for RMC_POT,
+helping connect initial structure preparation to reverse Monte Carlo modeling.
+For RMC_POT input preparation, calculation automation, and result analysis, see the independently usable [rmc_util](https://ohara-lab-su.github.io/rmc_util/en/).
 
 ```{toctree}
 :maxdepth: 2
@@ -20,3 +26,28 @@ tutorial
 reference
 api/modules
 ```
+
+
+## Installing bundled scripts and examples
+
+After `pip install packmol-util`, run the following commands in the working directory where you want the files:
+
+```sh
+packmol_util install scripts
+packmol_util install example
+```
+
+The first command copies the contents of the repository's `scripts/` directory, while the second copies `example/`. Subdirectory structures are preserved. For example, `example/Li3PO4/non_builder/make_Li3PO4.py` becomes `./Li3PO4/non_builder/make_Li3PO4.py`.
+
+Existing files are **not overwritten** by default. To overwrite files with the same name, use `--force`:
+
+```sh
+packmol_util install scripts --force
+packmol_util install example --force
+```
+
+Files are copied into the current working directory. Unrelated files are not deleted. This feature does not install the external Packmol executable.
+
+## Acknowledgments
+
+If you find this software helpful in your research, we would be grateful if you could mention Ohara Lab, Shimane University, in the acknowledgments of your publications.
